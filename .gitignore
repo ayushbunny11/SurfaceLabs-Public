@@ -9,6 +9,8 @@ env/
 venv/
 .venv/
 Backend/.env
+storage/
+.pytest_cache/
 
 # Build
 dist/
