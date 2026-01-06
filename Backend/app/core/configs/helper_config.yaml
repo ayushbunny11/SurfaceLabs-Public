@@ -1,0 +1,64 @@
+default_ignore:
+  # dependencies
+  - node_modules
+  - vendor
+  - packages
+  - bower_components
+
+  # virtual environments
+  - venv
+  - .venv
+  - env
+  - .env
+  - virtualenv
+
+  # cache / build
+  - __pycache__
+  - .pytest_cache
+  - .cache
+  - .mypy_cache
+  - dist
+  - build
+  - out
+  - target
+  - .next
+  - .nuxt
+  - coverage
+  - .nyc_output
+  - .tox
+
+  # IDE / editors
+  - .idea
+  - .vscode
+  - .eclipse
+  - .settings
+
+  # version control metadata
+  - .git
+  - .svn
+  - .hg
+
+  # logs
+  - logs
+  - npm-debug.log
+
+  # OS clutter
+  - .DS_Store
+  - Thumbs.db
+
+binary_exts:
+  - .h5
+  - .pkl
+  - .db
+  - .sqlite
+  - .bin
+  - .exe
+  - .dll
+  - .so
+  - .dylib
+  - .zip
+  - .tar
+  - .gz
+  - .lock
+  - .log
+  - .map

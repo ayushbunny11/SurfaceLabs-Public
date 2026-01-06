@@ -122,4 +122,3 @@ def extract_github_info(url: str) -> Optional[dict]:
     except Exception:
         app_logger.exception('Unexpected error while parsing GitHub URL: %s', url)
         return None
-    w

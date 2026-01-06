@@ -2,8 +2,9 @@ import logging
 import os
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
+from app.core.configs.app_config import system_config
 
-LOG_LEVEL = "INFO"
+LOG_LEVEL = system_config["LOG_LEVEL"]
 
 LEVEL_MAP = {
     "CRITICAL": logging.CRITICAL,

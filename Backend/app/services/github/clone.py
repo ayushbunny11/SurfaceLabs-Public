@@ -8,6 +8,7 @@ from pathlib import Path
 
 from app.services.github.parser import extract_github_info
 from app.utils.logget_setup import app_logger
+from app.core.configs.app_config import REPO_STORAGE, system_config
 import re
 
 try:
@@ -15,11 +16,6 @@ try:
 except Exception:
     Repo = None
     GitCommandError = Exception
-
-BASE_DIR = Path(__file__).resolve().parents[2]
-REPO_STORAGE = BASE_DIR / "storage" / "repos"
-REPO_STORAGE.mkdir(parents=True, exist_ok=True)
-
 
 _USER_ID_RE = r"^[A-Za-z0-9_.-]+$"
 

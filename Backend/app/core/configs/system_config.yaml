@@ -1,0 +1,4 @@
+LOG_LEVEL: "DEBUG"
+
+STATUS_FAILURE: "failure"
+STATUS_SUCCESS: "success"
