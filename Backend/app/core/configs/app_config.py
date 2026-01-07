@@ -11,33 +11,14 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     API_V1_PREFIX: str = "/api"
     ALLOWED_ORIGINS: list[str] = ["*"]
+    
+    GOOGLE_API_KEY: str = ""
 
     class Config:
         env_file = ".env"
 
 
 settings = Settings()
-
-
-# Pattern to match ${VAR_NAME} or ${VAR_NAME:default}
-ENV_VAR_PATTERN = re.compile(r"\$\{([A-Za-z0-9_]+)(?::([^}]*))?\}")
-
-def env_constructor(loader: yaml.SafeLoader, node: ScalarNode) -> str:
-    """
-    Construct a YAML scalar and substitute environment variables.
-    Only replaces ${VAR} or ${VAR:default}.
-    """
-    raw_value = loader.construct_scalar(node)
-
-    def substitute(match: re.Match) -> str:
-        var_name, default = match.groups()
-        return os.getenv(var_name, default or "")
-
-    # Replace all matches in the scalar
-    return ENV_VAR_PATTERN.sub(substitute, raw_value)
-
-# Register our custom tag for SafeLoader
-yaml.SafeLoader.add_constructor("!Env", env_constructor)
 
 def load_yaml_config(file_path: str) -> dict:
     """

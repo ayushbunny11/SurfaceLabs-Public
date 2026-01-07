@@ -8,6 +8,8 @@ from pydantic import BaseModel
 from app.schemas.feature_api_schemas import FileInfo
 from app.core.configs.app_config import helper_config, REPO_STORAGE
 from app.utils.logget_setup import app_logger
+from google.adk.agents import Agent
+import json
 
 # FILE INDEXER
 
@@ -120,7 +122,6 @@ def build_file_index(repo_path: str) -> List[FileInfo]:
                 )
 
                 results.append(info)
-        app_logger.info("Results: %s", results)
 
         return results
     except Exception as e:
@@ -239,3 +240,59 @@ def chunk_files(repo_path: str, files: List[FileInfo]):
             )
 
     return chunks
+
+def run_analysis(agent: Agent, session_id, user_id):
+    try:
+        # Initiate the agent and run analysis logic here
+        app_logger.info(f"Running analysis for session: {session_id}, user: {user_id}")
+        
+    except Exception as e:
+        app_logger.exception("Error running analysis: %s", e)
+        return None
+
+def read_chunk(chunk_id: str, session_id: str):
+    try:
+        user_id = "918262"
+        chunk_file_path = Path(REPO_STORAGE) / str(user_id) / "chunks" / f"chunk_{session_id}.json"
+        indexed_file_path = Path(REPO_STORAGE) / str(user_id) / "indexed_file" / f"file_index_{session_id}.json"
+        
+        # load chunk data
+        if not chunk_file_path.exists():
+            app_logger.error("Chunk file not found: %s", chunk_file_path)
+            return {"status": "failed", "message": "Chunk file not found", "data": ""}
+
+        try:
+            chunk_data = json.loads(chunk_file_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            app_logger.exception("Failed to read chunk file: %s", e)
+            return {"status": "failed", "message": "Failed to load chunks!", "data": ""}
+
+        # get the specific chunk
+        app_logger.info(chunk_data)
+        target = next((c for c in chunk_data if c.get("chunk_id") == chunk_id), None)
+        
+        if not target:
+            return {"status": "failed", "message": f"Chunk ID: {chunk_id} not found", "data": ""}
+        
+        # load index map: relative → absolute
+        indexed = json.loads(indexed_file_path.read_text(encoding="utf-8"))
+        index_map = {e["relative_path"]: e["path"] for e in indexed}
+
+        files_content = {}
+        for rel in target.get("files", []):
+            abs_path = index_map.get(rel)
+
+            if not abs_path:
+                app_logger.warning("File %s missing in index", rel)
+                continue
+
+            try:
+                files_content[rel] = Path(abs_path).read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                app_logger.exception("Failed to read %s", abs_path)
+
+        return files_content
+    except Exception as e:
+        app_logger.exception(f"Error while reading chunk_{chunk_id}: {e}")
+        return {"status": "failed", "message": "Failed to read chunks!", "data": ""}
+    
