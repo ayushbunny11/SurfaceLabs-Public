@@ -1,13 +1,14 @@
 from typing import Dict, Optional
-from google.adk.agents import Agent
+from google.adk.agents import LlmAgent
 
 class AgentManager:
     def __init__(self):
-        self._agents: Dict[str, Agent] = {}
+        self._agents: Dict[str, LlmAgent] = {}
 
-    def create(self, name: str, model: str, instruction: str, tools=None):
-        agent = Agent(
+    def create(self, name: str, model: str, instruction: str, description: str, tools=None):
+        agent = LlmAgent(
             name=name,
+            description=description,
             model=model,
             instruction=instruction,
             tools=tools or []
@@ -15,7 +16,7 @@ class AgentManager:
         self._agents[name] = agent
         return agent
 
-    def update(self, name: str, **kwargs) -> Optional[Agent]:
+    def update(self, name: str, **kwargs) -> Optional[LlmAgent]:
         agent = self._agents.get(name)
         if not agent:
             return None
@@ -32,7 +33,7 @@ class AgentManager:
     def delete(self, name: str):
         self._agents.pop(name, None)
 
-    def get(self, name: str) -> Optional[Agent]:
+    def get(self, name: str) -> Optional[LlmAgent]:
         return self._agents.get(name)
 
     def list(self):

@@ -50,3 +50,22 @@ class ProjectOverview(BaseModel):
     total_lines: int
     languages: Dict[str, int]
     analyzed_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    
+class SearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, description="Search query text")
+
+
+class SearchResultItem(BaseModel):
+    chunk_id: str
+    score: float
+    content: dict
+    relevance: str  # "high", "medium", "low"
+
+
+class SearchResponse(BaseModel):
+    status: str
+    message: str
+    data: List[SearchResultItem]
+    total_results: int
+    query: str

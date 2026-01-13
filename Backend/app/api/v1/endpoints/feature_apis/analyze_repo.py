@@ -3,16 +3,22 @@ from fastapi.responses import JSONResponse
 from pathlib import Path
 import json
 import uuid
-from app.schemas.feature_api_schemas import AnalysisRequest
+
+from google.genai.errors import ServerError
+
+from app.schemas.feature_api_schemas import *
 from app.utils.logget_setup import app_logger
 from app.core.configs.app_config import system_config, REPO_STORAGE, settings
-from app.services.github.code_analyzer import build_file_index, chunk_files, read_chunk
+from app.services.github.code_analyzer import build_file_index, chunk_files, run_analysis
 from app.services.agents.agent_config import agent_manager, memory_store, tool_registry, session_manager
+from app.services.ai_search.search_service import gemini_search_engine
+
 STATUS_SUCCESS = system_config.get("STATUS_SUCCESS", "success")
 STATUS_FAILURE = system_config.get("STATUS_FAILURE", "failure")
+app_logger.debug("API_KEY:")
+app_logger.debug(settings.GOOGLE_API_KEY)
 
 router = APIRouter()
-
 
 @router.post("/analysis")
 async def analyze_repo(request: Request, request_data: AnalysisRequest):
@@ -21,13 +27,15 @@ async def analyze_repo(request: Request, request_data: AnalysisRequest):
         folder_ids = request_data.folder_ids[0]
         file_path = str(REPO_STORAGE / f"{user_id}" / f"{folder_ids}")
         
-        session_id = folder_ids
-        
-        chunk_file_path = Path(REPO_STORAGE) / str(user_id) / "chunks" / f"chunk_{session_id}.json"
+        chunk_file_path = Path(REPO_STORAGE) / str(user_id) / "chunks" / f"chunk_{folder_ids}.json"
         chunk_file_path.parent.mkdir(parents=True, exist_ok=True)
         
-        indexed_file_path = Path(REPO_STORAGE) / str(user_id) / "indexed_file" / f"file_index_{session_id}.json"
+        indexed_file_path = Path(REPO_STORAGE) / str(user_id) / "indexed_file" / f"file_index_{folder_ids}.json"
         indexed_file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        app_logger.debug("Creating Agent!")
+        analysis_agent = agent_manager.create(name="Analysis_Agent", model=settings.ANALYSIS_MODEL, instruction="", description="Analysis Agent")
+        app_logger.debug("Agent created successfully!")
         
         indexed_file = build_file_index(file_path)
         if len(indexed_file) == 0:
@@ -50,17 +58,139 @@ async def analyze_repo(request: Request, request_data: AnalysisRequest):
         except Exception as e:
             app_logger.exception("Failed to write chunk or indexed file: %s", e)
         
+        chunked_ids = []
+        for chunk in chunked_data:
+            chunked_ids.append(chunk.get("chunk_id"))
         
-        files = read_chunk("chunk-3360afa9", "eedc058d684647f9880ac39bb87cba12")
-        final_data= {
-            "indexed_files": indexed_files,
-            "chunked_files": chunked_data,
-            "final_data": files
-        }
-        response = {"status": STATUS_SUCCESS, "message": "Analysis Completed!", "data": [final_data]}
+        analysis_status, message = await run_analysis(agent=analysis_agent, folder_id=folder_ids, user_id=user_id, chunk_ids=chunked_ids)
+
+        if not analysis_status:
+            response = {"status": STATUS_FAILURE, "message": message, "data": []}
+            return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=response)
+        
+        response = {"status": STATUS_SUCCESS, "message": "Analysis Completed!", "data": []}
         return JSONResponse(status_code=status.HTTP_200_OK, content=response)
-        
+    
     except Exception as e:
         app_logger.exception("Error while analyzing repository: %s", e)
-        response = {"status": STATUS_FAILURE, "message": "Analysis Failed!", "data": []}
+        response = {"status": STATUS_FAILURE, "message": "Analysis Failed! Please try again later!", "data": []}
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=response)
+    
+@router.post("/search", response_model=SearchResponse)
+async def search_indexed_docs(request: Request, request_data: SearchRequest):
+    """
+    Search through indexed document chunks using semantic similarity.
+    
+    Args:
+        request_data: SearchRequest containing query, folder_id, and top_k
+        
+    Returns:
+        SearchResponse with matching document chunks and similarity scores
+    """
+    try:
+        user_id = "918262"
+        query = request_data.query.strip()
+        
+        app_logger.info(
+            f"Search request - User: {user_id}, "
+            f"Query: '{query[:50]}...'"
+        )
+        gemini_search_engine.load()
+        
+        if not gemini_search_engine:
+            app_logger.error("Gemini search engine not initialized properly.")
+            response = {
+                "status": STATUS_FAILURE,
+                "message": "Search service is currently unavailable. Please try again later.",
+                "data": [],
+                "total_results": 0,
+                "query": query
+            }
+            return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=response)
+        
+        # Validate that index exists
+        if gemini_search_engine.index.ntotal == 0:
+            app_logger.warning(f"Search attempted on empty index. No documents indexed yet.")
+            response = {
+                "status": STATUS_SUCCESS,
+                "message": "No documents indexed yet. Please analyze the repository first.",
+                "data": [],
+                "total_results": 0,
+                "query": query
+            }
+            return JSONResponse(status_code=status.HTTP_200_OK, content=response)
+        
+        # Perform semantic search
+        search_results = gemini_search_engine.search(query)
+        
+        if not search_results:
+            app_logger.info(f"No results found for query: '{query}'")
+            response = {
+                "status": STATUS_SUCCESS,
+                "message": "No matching results found for your query.",
+                "data": [],
+                "total_results": 0,
+                "query": query
+            }
+            return JSONResponse(status_code=status.HTTP_200_OK, content=response)
+        
+        # Format results with relevance classification
+        formatted_results = []
+        for result in search_results:
+            # Classify relevance based on distance score
+            # Lower distance = higher relevance (L2 distance)
+            distance = result["score"]
+            if distance < 0.5:
+                relevance = "high"
+            elif distance < 1.0:
+                relevance = "medium"
+            else:
+                relevance = "low"
+            
+            # Parse the document content (it's stored as JSON string)
+            try:
+                content = json.loads(result["document"]) if isinstance(result["document"], str) else result["document"]
+            except json.JSONDecodeError:
+                content = {"raw_content": result["document"]}
+            
+            formatted_results.append({
+                "chunk_id": result["id"],
+                "score": round(distance, 4),
+                "content": content,
+                "relevance": relevance
+            })
+        
+        app_logger.info(f"Search completed - Found {len(formatted_results)} results")
+        
+        response = {
+            "status": STATUS_SUCCESS,
+            "message": f"Found {len(formatted_results)} matching results.",
+            "data": formatted_results,
+            "total_results": len(formatted_results),
+            "query": query
+        }
+        
+        return JSONResponse(status_code=status.HTTP_200_OK, content=response)
+    
+    except ValueError as e:
+        # Handle validation errors (empty query, invalid parameters)
+        app_logger.warning(f"Validation error during search: {e}")
+        response = {
+            "status": STATUS_FAILURE,
+            "message": f"Invalid search request: {str(e)}",
+            "data": [],
+            "total_results": 0,
+            "query": request_data.query
+        }
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=response)
+    
+    except Exception as e:
+        app_logger.exception("Error during search: %s", e)
+        response = {
+            "status": STATUS_FAILURE,
+            "message": "Search failed. Please try again later.",
+            "data": [],
+            "total_results": 0,
+            "query": request_data.query if request_data else ""
+        }
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=response)

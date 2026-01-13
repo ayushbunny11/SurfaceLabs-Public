@@ -11,6 +11,7 @@ venv/
 Backend/.env
 storage/
 .pytest_cache/
+test_scripts/
 
 # Build
 dist/

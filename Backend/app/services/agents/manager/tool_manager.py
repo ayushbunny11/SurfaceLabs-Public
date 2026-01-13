@@ -24,6 +24,7 @@ class ToolRegistry:
         """
         tool = FunctionTool(func=func, require_confirmation=requires_confirmation)
         self._registry[name] = tool
+        return self
 
     def register_agent_as_tool(self, name: str, agent: Agent):
         """
@@ -31,10 +32,12 @@ class ToolRegistry:
         That agent can be invoked like a tool by your main agent.
         """
         self._registry[name] = AgentTool(agent=agent)
+        return self
 
     def unregister(self, name: str):
         """Remove a tool from the registry."""
         self._registry.pop(name, None)
+        return self
 
     def get_all(self) -> List[Any]:
         """Return all registered tools."""

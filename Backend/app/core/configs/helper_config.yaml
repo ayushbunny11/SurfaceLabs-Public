@@ -46,7 +46,7 @@ default_ignore:
   - .DS_Store
   - Thumbs.db
 
-binary_exts:
+ignore_extensions:
   - .h5
   - .pkl
   - .db
@@ -62,3 +62,47 @@ binary_exts:
   - .lock
   - .log
   - .map
+
+  # images / media
+  - .png
+  - .jpg
+  - .jpeg
+  - .gif
+  - .bmp
+  - .ico
+  - .svg
+  - .mp4
+  - .mp3
+  - .wav
+  - .webm
+  - .mov
+  - .avi
+  - .mkv
+  - .flac
+
+  # fonts
+  - .ttf
+  - .woff
+  - .woff2
+  - .eot
+
+  # styles & stylesheets
+  - .css
+  - .scss
+  - .sass
+  - .less
+  - .styl
+
+  # markup that’s usually structural, not logic
+  - .html
+  - .htm
+
+  # archives and packages
+  - .rar
+  - .7z
+  - .bz2
+  - .xz
+
+  # OS / misc
+  - .DS_Store
+  - .Thumbs.db

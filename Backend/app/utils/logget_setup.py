@@ -5,17 +5,7 @@ from logging.handlers import TimedRotatingFileHandler
 from app.core.configs.app_config import system_config
 
 LOG_LEVEL = system_config["LOG_LEVEL"]
-
-LEVEL_MAP = {
-    "CRITICAL": logging.CRITICAL,
-    "ERROR": logging.ERROR,
-    "WARNING": logging.WARNING,
-    "INFO": logging.INFO,
-    "DEBUG": logging.DEBUG,
-}
-
-def get_level():
-    return LEVEL_MAP.get(LOG_LEVEL, logging.INFO)
+print(LOG_LEVEL)
 
 # -----------------------------
 # LOG DIRECTORY
@@ -61,15 +51,19 @@ def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
 
     if not logger.handlers:     # avoid attaching duplicate handlers
-        logger.setLevel("INFO")
+        logger.setLevel(LOG_LEVEL)
 
         # console
         console = logging.StreamHandler()
+        console.setLevel(LOG_LEVEL)
         console.setFormatter(logging.Formatter("%(levelname)s | %(message)s"))
         logger.addHandler(console)
 
         # file
-        logger.addHandler(build_rotating_handler(f"{name}"))
+        # file
+        file_handler = build_rotating_handler(name)
+        file_handler.setLevel(LOG_LEVEL)  # allow debug
+        logger.addHandler(file_handler)
 
         logger.propagate = False
 
