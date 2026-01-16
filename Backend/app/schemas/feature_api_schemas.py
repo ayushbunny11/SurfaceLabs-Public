@@ -69,3 +69,20 @@ class SearchResponse(BaseModel):
     data: List[SearchResultItem]
     total_results: int
     query: str
+
+
+# ============ Chat API Schemas ============
+
+class ChatRequest(BaseModel):
+    """Request schema for chat endpoint"""
+    query: str = Field(..., min_length=1, description="User's query or message")
+    user_id: Optional[str] = Field(None, description="User identifier")
+    session_id: Optional[str] = Field(None, description="Session identifier for conversation continuity")
+    folder_id: Optional[str] = Field(None, description="Repository folder ID for context")
+
+
+class ChatResponse(BaseModel):
+    """Response schema for chat endpoint"""
+    status: str
+    message: str
+    data: Optional[Dict] = None

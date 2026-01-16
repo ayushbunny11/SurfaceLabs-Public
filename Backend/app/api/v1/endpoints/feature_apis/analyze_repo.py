@@ -76,7 +76,7 @@ async def analyze_repo(request: Request, request_data: AnalysisRequest):
         response = {"status": STATUS_FAILURE, "message": "Analysis Failed! Please try again later!", "data": []}
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=response)
     
-@router.post("/search", response_model=SearchResponse)
+@router.post("/q", response_model=SearchResponse)
 async def search_indexed_docs(request: Request, request_data: SearchRequest):
     """
     Search through indexed document chunks using semantic similarity.
