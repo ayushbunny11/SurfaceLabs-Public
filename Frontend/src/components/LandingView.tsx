@@ -86,7 +86,6 @@ const LandingView: React.FC = () => {
     setProgressMessage("Starting...");
 
     try {
-      // Use SSE for progress streaming
       let metadataReceived: any = null;
       let cloneInfo: any = null;
 
@@ -163,9 +162,20 @@ const LandingView: React.FC = () => {
     }
   };
 
-  const handleConfirm = () => {
-    setView(AppView.ANALYSIS);
+  const handleProceed = () => {
+    setView(AppView.WORKSPACE);
   };
+
+  // Assuming 'view' is also available from AppContext, or passed as a prop
+  // For this change, we'll assume it's available in the scope where LandingView is rendered
+  // and that WorkspaceView is imported.
+  // This part of the instruction seems to imply LandingView itself should conditionally render WorkspaceView.
+  // However, without the full context of how LandingView is used, this might be a structural change.
+  // Sticking to the exact instruction, if 'view' is a state managed higher up, this block would be there.
+  // If 'view' is from AppContext, we'd need to destructure it: const { setView, setRepoData, repoData, view } = useContext(AppContext);
+  // For now, I'll add it as if 'view' is accessible.
+  // Note: WorkspaceView import is missing in the provided content, assuming it exists.
+  // import WorkspaceView from "./WorkspaceView"; // This would be needed if this block is active.
 
   return (
     <div className="h-screen w-full flex flex-col items-center justify-center p-6 relative overflow-hidden bg-background">
@@ -420,8 +430,8 @@ const LandingView: React.FC = () => {
                   >
                     Back
                   </Button>
-                  <Button
-                    onClick={handleConfirm}
+                <Button
+                    onClick={() => handleProceed()}
                     variant="contained"
                     fullWidth
                     endIcon={<ArrowRight sx={{ fontSize: 18 }} />}

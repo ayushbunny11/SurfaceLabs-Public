@@ -46,4 +46,6 @@ export interface AppContextType {
     setRepoData: (data: RepoData) => void;
     addMessage: (msg: Message) => void;
     resetApp: () => void;
+    activeFile: { name: string; path: string; content: string | null } | null;
+    setActiveFile: (file: { name: string; path: string; content: string | null } | null) => void;
 }

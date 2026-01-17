@@ -1,5 +1,5 @@
 from fastapi import APIRouter, status, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pathlib import Path
 import json
 import uuid
@@ -9,7 +9,7 @@ from google.genai.errors import ServerError
 from app.schemas.feature_api_schemas import *
 from app.utils.logget_setup import app_logger
 from app.core.configs.app_config import system_config, REPO_STORAGE, settings
-from app.services.github.code_analyzer import build_file_index, chunk_files, run_analysis
+from app.services.github.code_analyzer import build_file_index, chunk_files, run_analysis_stream
 from app.services.agents.agent_config import agent_manager, memory_store, tool_registry, session_manager
 from app.services.ai_search.search_service import gemini_search_engine
 
@@ -20,8 +20,72 @@ app_logger.debug(settings.GOOGLE_API_KEY)
 
 router = APIRouter()
 
+@router.post("/analysis/stream")
+async def analyze_repo_stream(request: Request, request_data: AnalysisRequest):
+    """SSE endpoint for analysis with real-time progress updates."""
+    user_id = "918262"
+    folder_ids = request_data.folder_ids[0]
+    
+    async def generate_events():
+        try:
+            file_path = str(REPO_STORAGE / f"{user_id}" / f"{folder_ids}")
+            
+            chunk_file_path = Path(REPO_STORAGE) / str(user_id) / "chunks" / f"chunk_{folder_ids}.json"
+            chunk_file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            indexed_file_path = Path(REPO_STORAGE) / str(user_id) / "indexed_file" / f"file_index_{folder_ids}.json"
+            indexed_file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            yield f"event: progress\ndata: {json.dumps({'stage': 'init', 'percent': 0, 'message': 'Creating analysis agent...'})}\n\n"
+            
+            analysis_agent = agent_manager.create(name="Analysis_Agent", model=settings.FLASH_MODEL, instruction="", description="Analysis Agent")
+            
+            yield f"event: progress\ndata: {json.dumps({'stage': 'indexing', 'percent': 2, 'message': 'Indexing repository files...'})}\n\n"
+            
+            indexed_file = build_file_index(file_path)
+            if len(indexed_file) == 0:
+                yield f"event: error\ndata: {json.dumps({'message': 'No files found for analysis.'})}\n\n"
+                return
+            
+            yield f"event: progress\ndata: {json.dumps({'stage': 'chunking', 'percent': 5, 'message': f'Found {len(indexed_file)} files. Creating chunks...'})}\n\n"
+            
+            chunked_data = chunk_files(file_path, indexed_file)
+            
+            indexed_files = [
+                f.model_dump(exclude_none=True, by_alias=True) if hasattr(f, "model_dump") else f
+                for f in indexed_file
+            ]
+            
+            chunk_file_path.write_text(json.dumps(chunked_data, indent=2), encoding="utf-8")
+            indexed_file_path.write_text(json.dumps(indexed_files, indent=2), encoding="utf-8")
+            
+            chunked_ids = [chunk.get("chunk_id") for chunk in chunked_data]
+            
+            yield f"event: progress\ndata: {json.dumps({'stage': 'analyzing', 'percent': 5, 'message': f'Created {len(chunked_ids)} chunks. Starting analysis...'})}\n\n"
+            
+            async for event in run_analysis_stream(agent=analysis_agent, folder_id=folder_ids, user_id=user_id, chunk_ids=chunked_ids):
+                yield f"event: {event.get('event', 'progress')}\ndata: {json.dumps(event)}\n\n"
+                
+                if event.get('event') == 'error':
+                    return
+        
+        except Exception as e:
+            app_logger.exception("SSE stream error: %s", e)
+            yield f"event: error\ndata: {json.dumps({'message': 'An unexpected error occurred.'})}\n\n"
+    
+    return StreamingResponse(
+        generate_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
 @router.post("/analysis")
 async def analyze_repo(request: Request, request_data: AnalysisRequest):
+    """Non-streaming analysis endpoint (legacy)."""
     try:
         user_id = "918262"
         folder_ids = request_data.folder_ids[0]
@@ -33,9 +97,7 @@ async def analyze_repo(request: Request, request_data: AnalysisRequest):
         indexed_file_path = Path(REPO_STORAGE) / str(user_id) / "indexed_file" / f"file_index_{folder_ids}.json"
         indexed_file_path.parent.mkdir(parents=True, exist_ok=True)
         
-        app_logger.debug("Creating Agent!")
         analysis_agent = agent_manager.create(name="Analysis_Agent", model=settings.ANALYSIS_MODEL, instruction="", description="Analysis Agent")
-        app_logger.debug("Agent created successfully!")
         
         indexed_file = build_file_index(file_path)
         if len(indexed_file) == 0:
@@ -45,27 +107,22 @@ async def analyze_repo(request: Request, request_data: AnalysisRequest):
         chunked_data = chunk_files(file_path, indexed_file)
         
         indexed_files = [
-            f.model_dump(
-                exclude_none=True,        # drop None fields
-                by_alias=True,            # use field aliases
-            ) if hasattr(f, "model_dump") else f
+            f.model_dump(exclude_none=True, by_alias=True) if hasattr(f, "model_dump") else f
             for f in indexed_file
         ]
         
-        try:
-            chunk_file_path.write_text(json.dumps(chunked_data, indent=2), encoding="utf-8")
-            indexed_file_path.write_text(json.dumps(indexed_files, indent=2), encoding="utf-8")
-        except Exception as e:
-            app_logger.exception("Failed to write chunk or indexed file: %s", e)
+        chunk_file_path.write_text(json.dumps(chunked_data, indent=2), encoding="utf-8")
+        indexed_file_path.write_text(json.dumps(indexed_files, indent=2), encoding="utf-8")
         
-        chunked_ids = []
-        for chunk in chunked_data:
-            chunked_ids.append(chunk.get("chunk_id"))
+        chunked_ids = [chunk.get("chunk_id") for chunk in chunked_data]
         
-        analysis_status, message = await run_analysis(agent=analysis_agent, folder_id=folder_ids, user_id=user_id, chunk_ids=chunked_ids)
-
-        if not analysis_status:
-            response = {"status": STATUS_FAILURE, "message": message, "data": []}
+        # Consume all events and check final status
+        final_event = None
+        async for event in run_analysis_stream(agent=analysis_agent, folder_id=folder_ids, user_id=user_id, chunk_ids=chunked_ids):
+            final_event = event
+        
+        if final_event and final_event.get("event") == "error":
+            response = {"status": STATUS_FAILURE, "message": final_event.get("message", "Analysis failed"), "data": []}
             return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=response)
         
         response = {"status": STATUS_SUCCESS, "message": "Analysis Completed!", "data": []}

@@ -1,0 +1,109 @@
+.markdown-body h1 {
+  font-size: 1.75em;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 0.3em;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+.markdown-body h2 {
+  font-size: 1.4em;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 0.3em;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+.markdown-body h3 {
+  font-size: 1.2em;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+.markdown-body p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 2em;
+  margin-bottom: 1rem;
+}
+.markdown-body ol {
+  list-style-type: decimal;
+  padding-left: 2em;
+  margin-bottom: 1rem;
+}
+.markdown-body a {
+  color: #4493f8;
+  text-decoration: none;
+}
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+.markdown-body code {
+  background-color: rgba(110, 118, 129, 0.4);
+  padding: 0.2em 0.4em;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 85%;
+}
+.markdown-body pre {
+  background-color: #161b22;
+  padding: 16px;
+  overflow: auto;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
+  font-size: 100%;
+}
+.markdown-body blockquote {
+  border-left: 0.25em solid #30363d;
+  padding: 0 1em;
+  color: #8b949e;
+  margin-bottom: 1rem;
+}
+.markdown-body table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+.markdown-body table th,
+.markdown-body table td {
+  padding: 6px 13px;
+  border: 1px solid #30363d;
+}
+.markdown-body table th {
+  font-weight: 600;
+  background-color: #161b22;
+}
+.markdown-body table tr:nth-child(2n) {
+  background-color: #0d1117;
+}
+.markdown-body img {
+  max-width: 100%;
+  box-sizing: content-box;
+  background-color: #0d1117;
+}
+.markdown-body hr {
+  height: 0.25em;
+  padding: 0;
+  margin: 24px 0;
+  background-color: #30363d;
+  border: 0;
+}
+
+/* Force wrapping for syntax highlighter blocks */
+.force-wrap pre,
+.force-wrap code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}

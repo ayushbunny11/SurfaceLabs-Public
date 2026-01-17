@@ -7,8 +7,6 @@ export const MOCK_REPO: RepoData = {
     stars: 213000,
     branches: 142,
     language: 'TypeScript',
-    loc: 340500,
-    files: 2104
 };
 
 export const MOCK_SESSIONS: Session[] = [

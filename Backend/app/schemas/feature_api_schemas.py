@@ -86,3 +86,21 @@ class ChatResponse(BaseModel):
     status: str
     message: str
     data: Optional[Dict] = None
+
+
+# ============ Repo Explorer API Schemas ============
+
+class ExplorerRequest(BaseModel):
+    folder_id: str
+
+
+class FileNode(BaseModel):
+    name: str
+    path: str
+    type: str
+    children: Optional[list["FileNode"]] = None
+
+
+class ContentRequest(BaseModel):
+    folder_id: str
+    file_path: str

@@ -259,134 +259,197 @@ def chunk_files(repo_path: str, files: List[FileInfo]):
 
     return chunks
 
-async def run_analysis(agent: Agent, folder_id, user_id, chunk_ids):
+async def run_analysis_stream(agent: Agent, folder_id, user_id, chunk_ids):
+    """
+    Async generator that yields SSE events during analysis.
+    Uses asyncio.Queue to yield events immediately as chunks complete.
+    """
     try:
-        # Initiate the agent and run analysis logic here
         ai_logger.info(f"Running analysis for folder_id: {folder_id}, user: {user_id}")
         if not REPO_ANALYSIS_PROMPT:
             ai_logger.error("REPO_ANALYSIS_PROMPT not found!")
-            return False, "Prompt is missing!"
+            yield {"event": "error", "message": "Prompt configuration missing"}
+            return
         
-        prompt = REPO_ANALYSIS_PROMPT
-        agent.instruction = prompt
+        agent.instruction = REPO_ANALYSIS_PROMPT
         
-        # Register tools
-        # tools = tool_registry.register_function(name= "Chunk Reader", func=read_chunk)
+        total_chunks = len(chunk_ids)
+        yield {"event": "progress", "stage": "init", "percent": 0, "message": f"Starting analysis of {total_chunks} chunks..."}
         
-        # agent.tools= tools.get_all()
+        MAX_CONCURRENT = 5
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT)
+        event_queue = asyncio.Queue()
+        failed_chunks = []
+        completed_count = 0
         
-        ai_logger.debug("Agent configurations are set: ")
-        ai_logger.debug(agent.__dict__)
-
-        for chunk_id in chunk_ids:
-            session_service: BaseSessionService | None = None
-            session_id = str(uuid.uuid4())
-            
-            chunk_data = read_chunk(chunk_id, folder_id)
-            
-            user_content = types.Content(
-                role="user",
-                parts=[
-                    types.Part(text=f"Analyze this data: {json.dumps(chunk_data)}"),
-                    types.Part(text="Generate the output in the provided structure.")
-                ]
-            )
-            
-            ai_logger.debug("Creating Sessions!")
-            await session_manager.create(APP_NAME=settings.APP_NAME, user_id=user_id, session_id=session_id)
-            ai_logger.debug("Sessions created successfully!")
-            session_service = session_manager.get_service()
-            
-            
-            runner = Runner(
-                app_name=settings.APP_NAME,
-                agent=agent,
-                session_service=session_service,    
-            )
-        
-            full_response_text = ""
-            async for event in runner.run_async(
-                user_id=user_id,
-                session_id=session_id,
-                new_message=user_content,
-            ):
-                ai_logger.debug(f"Event ID: {event.id}, Author: {event.author}")
-                if event.content and event.content.parts:
-                    # for part in event.content.parts:
-                        # ai_logger.debug(f"[LLM TEXT] {part.text}")
-                    
-                    if event.get_function_calls():
-                        ai_logger.debug("[LLM EVENT] Function Call!")
-                        calls = event.get_function_calls()
-                        
-                        if calls:
-                            for call in calls:
-                                tool_name = call.name
-                                arguments = call.args
-                                ai_logger.debug(f"[TOOL_CALL] Name: {tool_name} Arguments: {arguments} ")
-                                
-                    if event.get_function_responses():
-                        ai_logger.debug("[LLM EVENT] Function Responses!")
-                        responses = event.get_function_responses()
-                        for response in responses:
-                            tool_name = response.name
-                            # result = response.response
-                            ai_logger.debug(f"[TOOL_CALL] Tool Response Complete. Tool Name: {tool_name}")
-                            
-                if event.actions and event.actions.state_delta:
-                    ai_logger.debug(f"[ACTION_EVENT] State changes: {event.actions.state_delta}")
+        async def process_chunk(chunk_id: str, index: int):
+            nonlocal completed_count
+            async with semaphore:
+                await event_queue.put({
+                    "event": "progress", 
+                    "stage": "analyzing", 
+                    "chunk_id": chunk_id, 
+                    "chunk_index": index, 
+                    "total": total_chunks, 
+                    "message": f"Analyzing chunk {index + 1}/{total_chunks}..."
+                })
                 
-                if event.actions and event.actions.artifact_delta:
-                    ai_logger.debug(f"[ACTION_EVENT] Artifacts saved: {event.actions.artifact_delta}")
+                success = await _analyze_chunk(agent, chunk_id, folder_id, user_id)
+                completed_count += 1
+                percent = int((completed_count / total_chunks) * 90) + 5
                 
-                if event.is_final_response():
-                    ai_logger.debug(f"[FINAL_RESPONSE] {event.is_final_response()}")
-                    if event.content and event.content.parts and event.content.parts[0].text:
-                        final_text = full_response_text + (event.content.parts[0].text if not event.partial else "")
-                        ai_logger.debug(f"[FINAL_RESPONSE] Agent response: ")
-                        ai_logger.debug(final_text)
-                        
-                        final_chunks = extract_chunk_summaries(final_text)
-                        for final_chunk in final_chunks:
-                            saved = save_chunk_to_session(user_id=user_id, folder_id=folder_id, chunk_summary=final_chunk)
-                            if not saved:
-                                raise RuntimeError(f"Failed to save chunk summary for chunk_id: {chunk_id}")
-                    ai_logger.debug("Session Completed. Deleting session_id: %s", session_id)
-                    await session_service.delete_session(app_name=settings.APP_NAME, user_id=user_id, session_id=session_id)
-                    ai_logger.debug("Session deleted!")
-
-                if event.error_code or event.error_message:
-                    if event.error_message and ("RESOURCE_EXHAUSTED" in event.error_message):
-                        ai_logger.error("[ERROR] SLEEPING for 45 seconds")
-                        await asyncio.sleep(45)
-                        ai_logger.debug("[CONTINUE] Continuing after 45 seconds")
-                        
-                    ai_logger.error(f"[ERROR] {event.error_code or ''}")
-                    ai_logger.error(f"[ERROR] {event.error_message or ''}")
+                if success:
+                    await event_queue.put({
+                        "event": "chunk_complete", 
+                        "chunk_id": chunk_id, 
+                        "chunk_index": index, 
+                        "percent": percent, 
+                        "message": f"✓ Completed chunk {index + 1}/{total_chunks}"
+                    })
+                else:
+                    failed_chunks.append(chunk_id)
+                    await event_queue.put({
+                        "event": "chunk_failed", 
+                        "chunk_id": chunk_id, 
+                        "chunk_index": index, 
+                        "percent": percent, 
+                        "message": f"✗ Failed chunk {index + 1}/{total_chunks}"
+                    })
         
+        # Start all tasks
+        tasks = [asyncio.create_task(process_chunk(cid, i)) for i, cid in enumerate(chunk_ids)]
+        
+        # Yield events from queue as they arrive
+        pending_tasks = len(tasks)
+        while pending_tasks > 0 or not event_queue.empty():
+            try:
+                event = await asyncio.wait_for(event_queue.get(), timeout=0.1)
+                yield event
+                if event["event"] in ("chunk_complete", "chunk_failed"):
+                    pending_tasks -= 1
+            except asyncio.TimeoutError:
+                # Check if all tasks are done
+                if all(t.done() for t in tasks) and event_queue.empty():
+                    break
+        
+        # Wait for all tasks to complete (they should be done by now)
+        await asyncio.gather(*tasks, return_exceptions=True)
+        
+        yield {"event": "progress", "stage": "indexing", "percent": 95, "message": "Saving search index..."}
         gemini_search_engine.save()
-        return True, None
-    
-    except ServerError as e:
-        ai_logger.exception("ServerError during analysis")
-        ai_logger.error(f"Status Code: {e.status}, Message: {e.message} Code: {e.code} Details: {e.details}")
-        return False, "Gemini Server error occurred during analysis."
         
+        if failed_chunks:
+            yield {"event": "complete", "status": "partial", "percent": 100, "message": f"Analysis completed with {len(failed_chunks)} failed chunks", "failed_chunks": failed_chunks}
+        else:
+            yield {"event": "complete", "status": "success", "percent": 100, "message": "Analysis completed successfully"}
+        
+        ai_logger.info("All chunks processed successfully")
+    
     except Exception as e:
         ai_logger.exception("Error running analysis: %s", e)
-        return False, str(e)
+        yield {"event": "error", "message": str(e)}
+
+
+async def _analyze_chunk(agent: Agent, chunk_id: str, folder_id: str, user_id: str) -> bool:
+    """
+    Analyze a single chunk. Returns True on success, False on failure.
+    """
+    session_service: BaseSessionService | None = None
+    session_id = str(uuid.uuid4())
+    
+    try:
+        chunk_data = read_chunk(chunk_id, folder_id)
+        
+        user_content = types.Content(
+            role="user",
+            parts=[
+                types.Part(text=f"Analyze this data: {json.dumps(chunk_data)}"),
+                types.Part(text="Generate the output in the provided structure.")
+            ]
+        )
+        
+        ai_logger.debug(f"[{chunk_id}] Creating session {session_id}")
+        await session_manager.create(APP_NAME=settings.APP_NAME, user_id=user_id, session_id=session_id)
+        session_service = session_manager.get_service()
+        
+        runner = Runner(
+            app_name=settings.APP_NAME,
+            agent=agent,
+            session_service=session_service,    
+        )
+    
+        async for event in runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=user_content,
+        ):
+            ai_logger.debug(f"[{chunk_id}] Event ID: {event.id}, Author: {event.author}")
+            
+            if event.content and event.content.parts:
+                if event.get_function_calls():
+                    ai_logger.debug(f"[{chunk_id}] Function Call!")
+                    calls = event.get_function_calls()
+                    if calls:
+                        for call in calls:
+                            ai_logger.debug(f"[{chunk_id}] [TOOL_CALL] Name: {call.name} Args: {call.args}")
+                            
+                if event.get_function_responses():
+                    responses = event.get_function_responses()
+                    for response in responses:
+                        ai_logger.debug(f"[{chunk_id}] [TOOL_RESPONSE] Tool: {response.name}")
+                        
+            if event.actions and event.actions.state_delta:
+                ai_logger.debug(f"[{chunk_id}] State changes: {event.actions.state_delta}")
+            
+            if event.actions and event.actions.artifact_delta:
+                ai_logger.debug(f"[{chunk_id}] Artifacts saved: {event.actions.artifact_delta}")
+            
+            if event.is_final_response():
+                ai_logger.debug(f"[{chunk_id}] Final response received")
+                if event.content and event.content.parts and event.content.parts[0].text:
+                    final_text = event.content.parts[0].text if not event.partial else ""
+                    ai_logger.debug(f"[{chunk_id}] Agent response received")
+                    
+                    final_chunks = extract_chunk_summaries(final_text)
+                    for final_chunk in final_chunks:
+                        saved = save_chunk_to_session(user_id=user_id, folder_id=folder_id, chunk_summary=final_chunk)
+                        if not saved:
+                            ai_logger.error(f"[{chunk_id}] Failed to save chunk summary")
+                            return False
+                
+                ai_logger.debug(f"[{chunk_id}] Session completed")
+                return True
+
+            if event.error_code or event.error_message:
+                if event.error_message and ("RESOURCE_EXHAUSTED" in event.error_message):
+                    ai_logger.warning(f"[{chunk_id}] Rate limited, sleeping 45s")
+                    await asyncio.sleep(45)
+                    ai_logger.debug(f"[{chunk_id}] Resuming after rate limit")
+                    
+                ai_logger.error(f"[{chunk_id}] Error: {event.error_code or ''} - {event.error_message or ''}")
+        
+        return True
+        
+    except ServerError as e:
+        ai_logger.exception(f"[{chunk_id}] ServerError during analysis")
+        ai_logger.error(f"[{chunk_id}] Status: {e.status}, Message: {e.message}, Code: {e.code}")
+        return False
+        
+    except Exception as e:
+        ai_logger.exception(f"[{chunk_id}] Error: {e}")
+        return False
+        
     finally:
         if session_service and session_id:
             try:
-                ai_logger.debug(f"[CLEANUP] Deleting session {session_id} for user {user_id}")
                 await session_service.delete_session(
                     app_name=settings.APP_NAME, 
                     user_id=user_id, 
                     session_id=session_id
                 )
-                ai_logger.debug("[CLEANUP] Session deleted successfully")
+                ai_logger.debug(f"[{chunk_id}] Session {session_id} deleted")
             except Exception as cleanup_error:
-                ai_logger.error(f"[CLEANUP] Failed to delete session: {cleanup_error}")
+                ai_logger.error(f"[{chunk_id}] Failed to delete session: {cleanup_error}")
 
 def read_chunk(chunk_id: str, session_id: str):
     """
@@ -423,7 +486,7 @@ def read_chunk(chunk_id: str, session_id: str):
             return {"status": "failed", "message": "Failed to load chunks!", "data": ""}
 
         # get the specific chunk
-        ai_logger.info(chunk_data)
+        # ai_logger.info(chunk_data)
         target = next((c for c in chunk_data if c.get("chunk_id") == chunk_id), None)
         
         if not target:

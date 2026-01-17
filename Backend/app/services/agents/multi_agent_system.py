@@ -120,7 +120,7 @@ class MultiAgentSystem:
         
         self._answering_agent = self._agent_manager.create(
             name="answering_agent",
-            model=settings.ANALYSIS_MODEL,
+            model=settings.FLASH_MODEL,
             instruction=answering_prompt,
             description=(
                 "Answers questions about the codebase. Use this agent when the user "

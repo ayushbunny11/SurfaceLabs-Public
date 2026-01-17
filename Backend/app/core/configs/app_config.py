@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     
     GOOGLE_API_KEY: str = ""
     ANALYSIS_MODEL: str = ""
+    FLASH_MODEL: str = ""
 
     class Config:
         env_file = ".env"

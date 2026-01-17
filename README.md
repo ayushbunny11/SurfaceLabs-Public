@@ -77,3 +77,7 @@ This is an active, evolving project — expect improvements, iterations, and new
 ---
 
 Thanks for checking out KreeperAI — feedback and ideas are always welcome!
+
+## Future Updates:
+
+- Architecture Generation Agent
