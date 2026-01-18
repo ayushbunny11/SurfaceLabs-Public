@@ -5,7 +5,8 @@ This service handles user queries by routing them through
 the multi-agent system and captures all reasoning/execution events.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, AsyncGenerator
+import asyncio
 from datetime import datetime
 from google.adk.runners import Runner
 from google.genai import types
@@ -59,55 +60,55 @@ class ChatService:
             app_logger.error(f"Failed to initialize ChatService: {str(e)}")
             raise
     
-    async def process_query(
+    async def process_query_stream(
         self,
         query: str,
         user_id: str,
         session_id: str,
         folder_id: Optional[str] = None,
-        capture_events: bool = True
-    ) -> Dict[str, Any]:
+        typing_delay: float = 0.02
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Process a user query through the multi-agent system.
+        Process a user query and stream events as they happen.
         
-        The orchestrator will:
-        1. Analyze the query type (understanding vs feature request)
-        2. Search the indexed repository for context
-        3. Delegate to the appropriate sub-agent
-        4. Return the synthesized response with full execution trace
+        Yields SSE events:
+        - status: Current agent status/plan
+        - thinking: Agent reasoning
+        - tool_call: When a tool is invoked
+        - tool_response: Tool results
+        - token: Response text chunks (with typing delay)
+        - complete: Final completion signal
+        - error: Error information
         
         Args:
             query: The user's question or request
             user_id: User identifier
-            session_id: Session identifier for conversation continuity
-            folder_id: Optional repository folder ID for context
-            capture_events: Whether to capture all execution events
-            
-        Returns:
-            Dict containing the agent response, metadata, and execution trace
+            session_id: Session identifier
+            folder_id: Optional repository folder ID
+            typing_delay: Delay between tokens for typing effect (seconds)
         """
-        app_logger.info(f"Processing query for user={user_id}, session={session_id}")
+        app_logger.info(f"Streaming query for user={user_id}, session={session_id}")
         
-        # Ensure session exists
-        session = await session_manager.create(APP_NAME, user_id, session_id)
+        # Ensure session exists (get existing or create new)
+        await session_manager.get_or_create(APP_NAME, user_id, session_id)
         
-        # Create execution trace for event capture
+        # Create trace and event capture for consistent event handling
         trace = ExecutionTrace(
             session_id=session_id,
             user_id=user_id,
             query=query,
             started_at=datetime.utcnow().isoformat()
         )
-        
-        # Add initial event
-        trace.add_event(
-            EventType.QUERY_RECEIVED,
-            "system",
-            {"query": query, "folder_id": folder_id}
-        )
-        
-        # Create event capture processor
         event_capture = EventCapture(trace)
+        
+        # Yield initial status
+        yield {
+            "event": "status",
+            "data": {
+                "status": "Starting query processing",
+                "phase": "initialization"
+            }
+        }
         
         # Create user message
         user_message = types.Content(
@@ -116,118 +117,58 @@ class ChatService:
         )
         
         try:
+            yield {
+                "event": "status",
+                "data": {
+                    "status": "Analyzing your request",
+                    "phase": "orchestration"
+                }
+            }
+            
             async for event in self._runner.run_async(  # type: ignore
                 user_id=user_id,
                 session_id=session_id,
                 new_message=user_message
             ):
-                # Process each event through the capture system
-                if capture_events:
-                    event_capture.process_event(event, current_agent="orchestrator")
+                # Get the agent name from the event (defaults to orchestrator if not available)
+                current_agent = getattr(event, 'author', 'orchestrator') or 'orchestrator'
                 
-                # Also log key events for debugging
-                if hasattr(event, 'author'):
-                    app_logger.debug(f"[EVENT] Author: {event.author}")
+                # Use EventCapture for consistent event parsing
+                sse_events = event_capture.process_event_for_sse(event, current_agent=current_agent)
+                
+                for sse_event in sse_events:
+                    if sse_event["event"] == EventType.FINAL_RESPONSE.value:
+                        # Stream response text with typing effect
+                        text = sse_event["data"].get("text", "")
+                        for char in text:
+                            yield {
+                                "event": "token",
+                                "data": {"token": char}
+                            }
+                            await asyncio.sleep(typing_delay)
+                    else:
+                        # Other events pass through directly
+                        yield sse_event
             
-            response_text = event_capture.get_accumulated_response()
-            
-            app_logger.info(
-                f"Query processed for session={session_id}. "
-                f"Events captured: {len(trace.events)}"
-            )
+            # Completion
+            yield {
+                "event": "complete",
+                "data": {
+                    "session_id": session_id,
+                    "total_length": len(event_capture.get_accumulated_response())
+                }
+            }
             
         except Exception as e:
-            app_logger.error(f"Error running multi-agent system: {str(e)}")
-            trace.add_event(
-                EventType.ERROR,
-                "system",
-                {"error": str(e)}
-            )
-            trace.error = str(e)
-            trace.completed_at = datetime.utcnow().isoformat()
-            raise
-        
-        return {
-            "response": response_text,
-            "execution_trace": trace.to_dict() if capture_events else None,
-            "metadata": {
-                "session_id": session_id,
-                "user_id": user_id,
-                "folder_id": folder_id,
-                "events_count": len(trace.events),
-                "tools_used": trace.to_dict()["summary"]["tools_used"],
-                "agents_invoked": trace.to_dict()["summary"]["sub_agents_invoked"]
+            error_msg = str(e) if str(e) else "An unexpected error occurred during processing"
+            app_logger.error(f"Streaming error: {error_msg}", exc_info=True)
+            yield {
+                "event": "error",
+                "data": {
+                    "message": error_msg,
+                    "type": type(e).__name__
+                }
             }
-        }
-    
-    async def process_direct_answering(
-        self,
-        query: str,
-        context: str,
-        user_id: str,
-        session_id: str
-    ) -> Dict[str, Any]:
-        """
-        Process a query directly through the answering agent (bypassing orchestrator).
-        
-        Useful for testing or when you know the query type upfront.
-        """
-        trace = ExecutionTrace(
-            session_id=session_id,
-            user_id=user_id,
-            query=query,
-            started_at=datetime.utcnow().isoformat()
-        )
-        event_capture = EventCapture(trace)
-        
-        answering_agent = self._multi_agent_system.get_answering_agent()
-        
-        # Create a runner for the answering agent directly
-        answering_runner = Runner(
-            agent=answering_agent,
-            app_name=APP_NAME,
-            session_service=session_manager.get_service()
-        )
-        
-        # Build the prompt with context
-        full_prompt = f"""## Repository Context
-{context}
-
-## User Question
-{query}"""
-        
-        user_message = types.Content(
-            role="user",
-            parts=[types.Part.from_text(text=full_prompt)]
-        )
-        
-        trace.add_event(
-            EventType.QUERY_RECEIVED,
-            "answering_agent",
-            {"query": query, "context_length": len(context)}
-        )
-        
-        # Ensure session
-        await session_manager.create(APP_NAME, user_id, session_id)
-        
-        async for event in answering_runner.run_async(  # type: ignore
-            user_id=user_id,
-            session_id=session_id,
-            new_message=user_message
-        ):
-            event_capture.process_event(event, current_agent="answering_agent")
-        
-        response_text = event_capture.get_accumulated_response()
-        
-        return {
-            "response": response_text,
-            "execution_trace": trace.to_dict(),
-            "metadata": {
-                "agent": "answering_agent",
-                "direct": True,
-                "events_count": len(trace.events)
-            }
-        }
     
     def get_agent_info(self) -> Dict[str, Any]:
         """Get information about the configured agents."""

@@ -1,49 +1,66 @@
 import { ChatInterface } from "./ChatInterface";
-import type { Message } from "./ChatInterface";
 import { CodeViewer } from "../Code/CodeViewer";
 import { Menu, PlayArrow, Commit } from "@mui/icons-material";
 import { IconButton, Button } from "@mui/material";
-import { useState, type FC } from "react";
+import { useState, type FC, useContext, useCallback } from "react";
+import { AppContext } from "../../../context/AppContext";
+import { useChatStream } from "../../../hooks/useChatStream";
+import type { Message } from "../../../types";
 
 interface MainInterfaceProps {
     onToggleSidebar: () => void;
 }
 
 export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
+  const { repoData, activeFile } = useContext(AppContext);
   const [messages, setMessages] = useState<Message[]>([]);
+  const { sendMessage, isStreaming } = useChatStream();
 
-  const handleSend = (input: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
+  const handleSend = useCallback(async (input: string) => {
+    // 0. Safeguard: Don't send if already loading or empty
+    if (!input.trim() || isStreaming) return;
+
+    // 1. Build query with file context if a file is open
+    let queryWithContext = input;
+    if (activeFile?.path) {
+      queryWithContext = `[Context: User is currently viewing file "${activeFile.path}"]\n\n${input}`;
+    }
+
+    // 2. Generate unique IDs for this exchange
+    const userId = crypto.randomUUID();
+    const assistantId = crypto.randomUUID();
+
+    const userMessage: Message = {
+      id: userId,
       role: "user",
       content: input,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    const placeholderAssistant: Message = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      reasoning: "Preparing...",
+      isThinking: true,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
 
-    // Simulate AI response (Mock for now) with reference features
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content:
-            "I've drafted a plan to integrate the new payment provider. \n\n**Integration Plan:**\n1.  Create `PaymentService` interface.\n2.  Implement `StripeAdapter` class.\n3.  Update `CheckoutController` to use the new service.",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          reasoning:
-            "Detected 'Stripe' keyword. Located `src/services/payment`. Identified missing Adapter pattern implementation. Checking `package.json` for `@stripe/stripe-js` dependency.",
-        },
-      ]);
-    }, 1500);
-  };
+    setMessages((prev) => [...prev, userMessage, placeholderAssistant]);
+
+    // 3. Start Streaming
+    await sendMessage(
+      queryWithContext,
+      (update: Partial<Message>) => {
+        setMessages((prev) => 
+          prev.map((msg) => 
+            msg.id === assistantId ? { ...msg, ...update } : msg
+          )
+        );
+      },
+      repoData?.cloneId
+    );
+  }, [repoData, activeFile, sendMessage, isStreaming]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0c0c0c]">
@@ -114,7 +131,7 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
       <div className="flex-1 flex overflow-hidden">
         <CodeViewer />
         <div className="w-[400px] border-l border-neutral-800 flex flex-col">
-          <ChatInterface messages={messages} onSend={handleSend} />
+          <ChatInterface messages={messages} onSend={handleSend} isLoading={isStreaming} />
         </div>
       </div>
     </div>

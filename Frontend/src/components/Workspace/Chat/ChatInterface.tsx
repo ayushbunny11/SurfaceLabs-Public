@@ -2,25 +2,19 @@ import { type FC, useState } from "react";
 import { Send } from "@mui/icons-material";
 import { IconButton } from "@mui/material";
 import { Messages } from "./Messages";
-
-export interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
-  reasoning?: string;
-}
+import type { Message } from "../../../types";
 
 interface ChatInterfaceProps {
   messages: Message[];
   onSend: (message: string) => void;
+  isLoading?: boolean;
 }
 
-export const ChatInterface: FC<ChatInterfaceProps> = ({ messages, onSend }) => {
+export const ChatInterface: FC<ChatInterfaceProps> = ({ messages, onSend, isLoading }) => {
   const [input, setInput] = useState("");
 
   const handleSendClick = () => {
-    if (input.trim()) {
+    if (input.trim() && !isLoading) {
       onSend(input);
       setInput("");
     }
@@ -43,21 +37,22 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({ messages, onSend }) => {
                 handleSendClick();
               }
             }}
-            placeholder="Describe your feature requirements..."
-            className="w-full bg-transparent text-sm text-neutral-200 placeholder:text-neutral-600 resize-none max-h-32 min-h-[44px] p-2.5 focus:outline-none scrollbar-none"
+            placeholder={isLoading ? "Analyzing..." : "Describe your feature requirements..."}
+            disabled={isLoading}
+            className="w-full bg-transparent text-sm text-neutral-200 placeholder:text-neutral-600 resize-none max-h-32 min-h-[44px] p-2.5 focus:outline-none scrollbar-none disabled:opacity-50"
             rows={1}
           />
           <div className="pb-1 pr-1">
             <IconButton
               onClick={handleSendClick}
-              disabled={!input.trim()}
+              disabled={!input.trim() || isLoading}
               sx={{
-                backgroundColor: input.trim() ? "white" : "#262626",
-                color: input.trim() ? "black" : "#525252",
+                backgroundColor: input.trim() && !isLoading ? "white" : "#262626",
+                color: input.trim() && !isLoading ? "black" : "#525252",
                 width: 32,
                 height: 32,
                 "&:hover": {
-                  backgroundColor: input.trim() ? "#e5e5e5" : "#262626",
+                  backgroundColor: input.trim() && !isLoading ? "#e5e5e5" : "#262626",
                 },
                 transition: "all 0.2s",
               }}

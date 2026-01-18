@@ -1,11 +1,16 @@
-import { type FC, useContext } from "react";
+import { type FC, useContext, useEffect } from "react";
 import { Code } from "@mui/icons-material";
 import { AppContext } from "../../../context/AppContext";
 import { ActiveFeatures } from "./ActiveFeatures";
 import { ProjectFiles } from "./ProjectFiles";
 
 export const Sidebar: FC = () => {
-  const { repoData } = useContext(AppContext);
+  const { repoData, checkSystemHealth, isSystemOnline } =
+    useContext(AppContext);
+
+  useEffect(() => {
+    checkSystemHealth();
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-[#121212] border-r border-neutral-800 shrink-0">
@@ -36,9 +41,13 @@ export const Sidebar: FC = () => {
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-900 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span>
+              <span
+                className={`${isSystemOnline ? "bg-green-600" : "bg-red-600"} relative inline-flex rounded-full h-2 w-2`}
+              ></span>
             </span>
-            <span className="font-mono">Ready</span>
+            <span className="font-mono">
+              {isSystemOnline ? "Online" : "Offline"}
+            </span>
           </div>
           <span className="font-mono opacity-50">Tokens: 4k</span>
         </div>

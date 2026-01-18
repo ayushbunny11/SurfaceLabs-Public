@@ -62,7 +62,7 @@ export const CodeViewer: FC = () => {
             <div className="flex bg-[#1e1e1e] rounded-md p-0.5 border border-neutral-800">
               <button
                 onClick={() => setViewMode("code")}
-                className={`px-2 py-0.5 text-[10px] rounded hover:text-white transition-colors flex items-center gap-1 ${
+                className={`px-2 py-0.5 text-[10px] rounded hover:text-white cursor-pointer transition-colors flex items-center gap-1 ${
                   viewMode === "code"
                     ? "bg-[#2a2a2a] text-white"
                     : "text-neutral-500"
@@ -72,7 +72,7 @@ export const CodeViewer: FC = () => {
               </button>
               <button
                 onClick={() => setViewMode("preview")}
-                className={`px-2 py-0.5 text-[10px] rounded hover:text-white transition-colors flex items-center gap-1 ${
+                className={`px-2 py-0.5 text-[10px] rounded hover:text-white cursor-pointer transition-colors flex items-center gap-1 ${
                   viewMode === "preview"
                     ? "bg-[#2a2a2a] text-white"
                     : "text-neutral-500"

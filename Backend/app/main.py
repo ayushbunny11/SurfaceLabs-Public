@@ -26,6 +26,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Chat-Session-Id"],  # Allow frontend to access this header
 )
 
 # Mount versioned API

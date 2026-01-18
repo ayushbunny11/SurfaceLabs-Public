@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppContext } from "../context/AppContext";
 import { AppView } from "../types";
@@ -23,8 +23,7 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import { system_health, parse_github_url_stream } from "../configs/api_config";
-import api from "../services/api";
+import { parse_github_url_stream } from "../configs/api_config";
 import { streamSSE } from "../utils/sse";
 
 // Helper to format relative time (e.g., "2 hours ago", "3 days ago")
@@ -50,31 +49,16 @@ const formatRelativeTime = (dateString: string): string => {
 };
 
 const LandingView: React.FC = () => {
-  const { setView, setRepoData, repoData } = useContext(AppContext);
+  const { setView, setRepoData, repoData, isSystemOnline } =
+    useContext(AppContext);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [repoFound, setRepoFound] = useState(false);
-  const [isSystemOnline, setIsSystemOnline] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Progress state for SSE
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
-
-  const checkHealth = async () => {
-    try {
-      const status = await api.get(system_health);
-      console.log(status);
-      setIsSystemOnline(status.data.status === "ok");
-    } catch (error) {
-      console.error("System health check failed:", error);
-      setIsSystemOnline(false);
-    }
-  };
-
-  useEffect(() => {
-    checkHealth();
-  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,7 +92,7 @@ const LandingView: React.FC = () => {
           onError: (msg) => {
             throw new Error(msg);
           },
-        }
+        },
       );
 
       // Check if we got metadata - if not, something went wrong
@@ -191,8 +175,8 @@ const LandingView: React.FC = () => {
                 isSystemOnline
                   ? "bg-green-500"
                   : isSystemOnline === false
-                  ? "bg-red-500"
-                  : "bg-yellow-500"
+                    ? "bg-red-500"
+                    : "bg-yellow-500"
               }`}
             />
           }
@@ -200,26 +184,26 @@ const LandingView: React.FC = () => {
             isSystemOnline
               ? "System Online"
               : isSystemOnline === false
-              ? "System Offline"
-              : "Checking..."
+                ? "System Offline"
+                : "Checking..."
           }
           variant="outlined"
           sx={{
             borderColor: isSystemOnline
               ? "rgba(34, 197, 94, 0.2)"
               : isSystemOnline === false
-              ? "rgba(239, 68, 68, 0.2)"
-              : "rgba(234, 179, 8, 0.2)",
+                ? "rgba(239, 68, 68, 0.2)"
+                : "rgba(234, 179, 8, 0.2)",
             backgroundColor: isSystemOnline
               ? "rgba(34, 197, 94, 0.05)"
               : isSystemOnline === false
-              ? "rgba(239, 68, 68, 0.05)"
-              : "rgba(234, 179, 8, 0.05)",
+                ? "rgba(239, 68, 68, 0.05)"
+                : "rgba(234, 179, 8, 0.05)",
             color: isSystemOnline
               ? "#4ade80"
               : isSystemOnline === false
-              ? "#f87171"
-              : "#facc15",
+                ? "#f87171"
+                : "#facc15",
             "& .MuiChip-label": { px: 1.5 },
             "& .MuiChip-icon": { ml: 1 },
           }}
@@ -430,7 +414,7 @@ const LandingView: React.FC = () => {
                   >
                     Back
                   </Button>
-                <Button
+                  <Button
                     onClick={() => handleProceed()}
                     variant="contained"
                     fullWidth

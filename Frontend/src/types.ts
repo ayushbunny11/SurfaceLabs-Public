@@ -26,9 +26,11 @@ export interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    timestamp: number;
-    reasoning?: string; // For the "Thinking" accordion
+    timestamp: string;
+    reasoning?: string;
     isThinking?: boolean;
+    stateChanges?: string[];
+    citations?: { title: string; uri: string; type: string }[];
 }
 
 export interface Session {
@@ -42,10 +44,12 @@ export interface AppContextType {
     repoData: RepoData | null;
     messages: Message[];
     sessions: Session[];
+    isSystemOnline: boolean | null;
     setView: (view: AppView) => void;
     setRepoData: (data: RepoData) => void;
     addMessage: (msg: Message) => void;
     resetApp: () => void;
+    checkSystemHealth: () => Promise<void>;
     activeFile: { name: string; path: string; content: string | null } | null;
     setActiveFile: (file: { name: string; path: string; content: string | null } | null) => void;
 }

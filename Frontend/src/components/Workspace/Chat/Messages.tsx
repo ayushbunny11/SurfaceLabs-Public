@@ -2,14 +2,13 @@ import { type FC, useRef, useEffect, useState } from "react";
 import {
   SmartToy,
   Person,
-  Lightbulb,
   ExpandMore,
   ExpandLess,
   Description,
   Add,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Message } from "./ChatInterface";
+import type { Message } from "../../../types";
 
 interface MessagesProps {
   messages: Message[];
@@ -61,19 +60,27 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
             <div
               className={`max-w-[85%] flex flex-col ${msg.role === "user" ? "items-end" : "items-start w-full"}`}
             >
-              {/* Reasoning Accordion */}
-              {msg.reasoning && (
-                <ReasoningDisclosure reasoning={msg.reasoning} />
-              )}
-
               <div
-                className={`px-5 py-3.5 rounded-2xl text-sm leading-7 shadow-sm ${
+                className={`px-5 py-3.5 rounded-2xl text-sm leading-7 shadow-sm overflow-hidden ${
                   msg.role === "user"
                     ? "bg-neutral-800 text-white rounded-br-none border border-neutral-700"
                     : "bg-[#111111] text-neutral-300 border border-neutral-800 rounded-bl-none w-full"
                 }`}
               >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                {/* Reasoning Accordion (Inside bubble for Assistant) */}
+                {msg.role === "assistant" && (msg.reasoning || msg.isThinking) && (
+                  <ReasoningDisclosure reasoning={msg.reasoning || ""} isThinking={msg.isThinking} />
+                )}
+
+                {msg.role === "assistant" && msg.isThinking && !msg.content && (
+                  <div className="flex items-center gap-1.5 py-1">
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse [animation-delay:200ms]" />
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse [animation-delay:400ms]" />
+                  </div>
+                )}
+                
+                <div className="whitespace-pre-wrap break-words">{msg.content}</div>
 
                 {/* Mock Proposed Changes (Only for AI) - Hardcoded for demo fidelity */}
                 {msg.role === "assistant" &&
@@ -120,43 +127,49 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
   );
 };
 
-// Reasoning Component
-const ReasoningDisclosure: FC<{ reasoning: string }> = ({ reasoning }) => {
-  const [isOpen, setIsOpen] = useState(false);
+// Reasoning Component - Shows current status prominently, history expandable
+const ReasoningDisclosure: FC<{ reasoning: string; isThinking?: boolean }> = ({ reasoning, isThinking }) => {
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Parse reasoning: "current\n---\nhistory line 1\nhistory line 2"
+  const parts = reasoning.split("\n---\n");
+  const currentStatus = parts[0] || "";
+  const historyLines = parts[1] ? parts[1].split("\n").filter(line => line.trim()) : [];
 
   return (
-    <div className="mb-2 self-start">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-xs font-medium text-neutral-500 hover:text-indigo-400 transition-colors select-none bg-neutral-900 border border-neutral-800 px-3 py-1.5 rounded-full hover:border-neutral-700"
-      >
-        <Lightbulb
-          sx={{ fontSize: 14 }}
-          className={isOpen ? "text-indigo-400" : ""}
-        />
-        {isOpen ? "Hide reasoning" : "View analysis process"}
-        {isOpen ? (
-          <ExpandLess sx={{ fontSize: 14 }} />
-        ) : (
-          <ExpandMore sx={{ fontSize: 14 }} />
+    <div className="mb-3 w-full">
+      {/* Current Status - Always visible when thinking */}
+      <div className="flex items-center gap-2 text-xs text-neutral-400 px-1 py-1.5">
+        {isThinking && (
+          <div className="w-2.5 h-2.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
         )}
-      </button>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
+        <span className={isThinking ? "text-neutral-300" : "text-neutral-500"}>
+          {currentStatus}
+        </span>
+      </div>
+
+      {/* History Toggle - Only show if there's history */}
+      {historyLines.length > 0 && (
+        <>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-1 text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors ml-1"
           >
-            <div className="mt-2 pl-4 border-l-2 border-neutral-800 py-2 ml-2">
-              <p className="text-xs text-neutral-400 font-mono leading-5 tracking-tight max-w-prose">
-                {reasoning}
-              </p>
+            {showHistory ? <ExpandLess sx={{ fontSize: 12 }} /> : <ExpandMore sx={{ fontSize: 12 }} />}
+            <span>{showHistory ? "Hide" : "Show"} {historyLines.length} previous step{historyLines.length > 1 ? "s" : ""}</span>
+          </button>
+          
+          {showHistory && (
+            <div className="mt-2 ml-3 pl-2 border-l border-neutral-800">
+              {historyLines.map((line, idx) => (
+                <div key={idx} className="text-[10px] text-neutral-600 py-0.5">
+                  {line}
+                </div>
+              ))}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </>
+      )}
     </div>
   );
 };

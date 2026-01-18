@@ -65,19 +65,46 @@ By focusing on _feature-level intelligence_, it supports modern, iterative devel
 
 ---
 
-## 📌 Status
+## 📌 Status: Technical Preview
 
-This is an active, evolving project — expect improvements, iterations, and new capabilities focused on:
+KreeperAI is currently in active development.
 
-- smarter repo understanding
-- versioned API support
-- safer AI-driven code generation
-- developer-first tooling
+### ✅ Implemented Features
+
+- **Multi-Agent Orchestration**: Specialized agents for Feature Generation, Code Explanation, and Project Management.
+- **Context-Aware Chat**: Agents have full awareness of the repository structure and file contents.
+- **Real-time Streaming**: SSE-based chat interface with "Thinking" process visibility.
+- **Session Management**: Persistent chat sessions with history tracking.
+- **Repository Analysis**: Smart file tree exploration and indexing.
+
+### 🎉 Phase 1 Successfully Completed — January 18, 2026
 
 ---
 
-Thanks for checking out KreeperAI — feedback and ideas are always welcome!
+## 🗺️ Roadmap: Phase 2 - January 19, 2026
 
-## Future Updates:
+### Core Enhancements
 
-- Architecture Generation Agent
+### 1. Chat & Visuals
+
+- [ ] Enhanced chat styling (Typography, Avatars)
+- [ ] Rich message formatting (Markdown, Code Blocks)
+- [ ] Contextual user message styling
+
+### 2. File Operations
+
+- [ ] Backend support for creating and editing files
+- [ ] Frontend UI for accepting/rejecting proposed changes
+- [ ] Direct file manipulation by agents
+
+### 3. Diff Viewer
+
+- [ ] GitHub-style diff viewer for proposed code changes
+- [ ] Line-by-line comparison (Old vs New)
+
+### 4. Advanced Tooling
+
+- [ ] **Testing Agent**: Dedicated agent for running and verifying tests
+- [ ] **Active Features**: Sidebar management for ongoing tasks
+- [ ] **User API Key**: Secure, per-session API key management UI
+- [ ] **Token Management & Rate Limits**: Actual LLM token counts and usage tracking, per-user rate limiting
