@@ -9,3 +9,5 @@ RATE_LIMITS:
   CHAT_LIMIT: "50/day"
   SEARCH_LIMIT: "100/day"
   EXPLORER_LIMIT: "200/day"
+
+ERROR_MESSAGE: "Sorry, we encountered an unexpected error while processing your request. Please try again."

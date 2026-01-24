@@ -17,6 +17,7 @@ from datetime import datetime
 from enum import Enum
 
 from app.utils.logget_setup import ai_logger
+from app.core.configs.app_config import system_config
 
 
 class EventType(str, Enum):
@@ -51,8 +52,10 @@ AGENT_ALIASES = {
     "feature_generation_agent": "Feature Designer",
     "coding_agent": "Developer Assistant",
     "research_agent": "Research Analyst",
+    "web_search_agent": "Google Assistant"
 }
 
+ERROR_MESSAGE = system_config.get("ERROR_MESSAGE", "An error occured!")
 
 def get_tool_alias(tool_name: str) -> str:
     """Get user-friendly alias for a tool name."""
@@ -113,7 +116,7 @@ def summarize_tool_response(tool_name: str, response_str: str) -> str:
             return "Analysis complete"
         
         else:
-            return "Task finished"
+            return "Analyzing final response..."
             
     except Exception as e:
         ai_logger.warning(f"[SUMMARIZE] Failed to summarize tool response: {str(e)}")
@@ -213,13 +216,34 @@ class EventCapture:
                     tool_alias = get_agent_alias(tool_name) if is_agent else get_tool_alias(tool_name)
                     agent_alias = get_agent_alias(current_agent)
                     
-                    # Status update - provide context rather than just mirroring the call
+                    # Extract arguments for more descriptive status messages
+                    tool_args = {}
+                    if hasattr(call, 'args') and call.args:
+                        try:
+                            tool_args = call.args if isinstance(call.args, dict) else {}
+                            ai_logger.debug(f"[EventCapture] tool_args: {tool_args}")
+                        except:
+                            pass
+                    
                     if is_agent:
                         status_msg = f"{agent_alias} is consulting {tool_alias}..."
+                    
                     elif "microsoft" in tool_name.lower() or "learn" in tool_name.lower():
+                        ai_logger.debug(f"[EventCapture] Function call: tool='{tool_name}', is_agent={is_agent}")
                         status_msg = f"Fetching data from {tool_alias} MCP server..."
+                    
+                    elif "google_search" in tool_name.lower():
+                        ai_logger.debug(f"[EventCapture] Function call: tool='{tool_name}', is_agent={is_agent}")
+                        search_query = tool_args.get('query', '') or tool_args.get('q', '')
+                        ai_logger.debug(f"[EventCapture] search_query: {search_query}")
+                        if search_query:
+                            
+                            query_preview = search_query[:60] + "..." if len(search_query) > 60 else search_query
+                            status_msg = f"Searching Web for {query_preview}"
+                        else:
+                            status_msg = "Searching Web"
                     else:
-                        status_msg = f"Using {tool_alias} to help process request"
+                        status_msg = f"{tool_alias} to help process request"
                     
                     # Only send status if it's meaningful and different
                     if status_msg != self._last_status:
@@ -374,7 +398,7 @@ class EventCapture:
                     "event": EventType.ERROR.value,
                     "data": {
                         "error_code": event.error_code,
-                        "message": error_msg
+                        "message": ERROR_MESSAGE
                     }
                 })
             

@@ -33,12 +33,7 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
     setSessionUsage(totalUsage);
   }, [messages, setSessionUsage]);
 
-  // CODE_PROPOSAL events are now handled in AppContext.tsx
-  // which manages the pendingProposals map for multi-file support
-
-
   const handleSend = useCallback(async (input: string) => {
-    // 0. Safeguard: Don't send if already loading, empty, or no repo data
     if (!input.trim() || isStreaming) return;
     
     if (!repoData?.cloneId) {
@@ -102,7 +97,7 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
           </IconButton>
           <div className="h-4 w-px bg-neutral-800 mx-1" />
           <div className="flex items-center gap-2 text-sm text-neutral-500">
-            <span>REQIO-IQ</span>
+            <span>SurfaceLabs</span>
             <span className="text-neutral-700">/</span>
             <span className="text-neutral-300">Workspace</span>
           </div>

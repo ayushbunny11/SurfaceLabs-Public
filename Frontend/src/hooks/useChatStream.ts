@@ -44,9 +44,8 @@ export const useChatStream = () => {
       total_tokens: 0
     };
 
-    // Helper to build reasoning string (current status + history)
+
     const buildReasoning = () => {
-      // Format: Current status on top, history below (separated by special marker)
       if (history.length === 0) {
         return currentStatus;
       }
@@ -56,6 +55,14 @@ export const useChatStream = () => {
     // Immediately show the initialization message
     onUpdate({ reasoning: buildReasoning(), isThinking: true });
 
+
+    // Helper to update status and preserve history
+    const updateStatus = (newStatus: string) => {
+      if (currentStatus && currentStatus !== "Initializing..." && !history.includes(currentStatus)) {
+        history.push(currentStatus);
+      }
+      currentStatus = newStatus;
+    };
 
     try {
       console.log(`[useChatStream] Sending with session_id: ${sessionIdRef.current || 'NEW SESSION'}`);
@@ -78,29 +85,15 @@ export const useChatStream = () => {
 
           switch (event) {
             case "status":
-              // Move previous status to history if it's meaningful
-              if (currentStatus && currentStatus !== "Initializing..." && !history.includes(currentStatus)) {
-                history.push(currentStatus);
-              }
-              currentStatus = data.status;
+              updateStatus(data.status);
               break;
 
-            case "tool_call":
-            case "tool call":
-              // Skip - status already shows this
-              break;
 
             case "tool_response":
             case "tool response":
               // Append result to current status
               const summary = data.response_summary || "Done";
-              currentStatus = `${data.tool_name} - ${summary}`;
-              break;
-
-            case "sub_agent_call":
-            case "sub_agent call":
-            case "sub agent call":
-              // Skip - status already shows delegation
+              updateStatus(`${data.tool_name} - ${summary}`);
               break;
 
             case "sub_agent_response":
@@ -108,7 +101,7 @@ export const useChatStream = () => {
             case "sub agent response":
               // Append result to current status
               const agentSummary = data.response_summary || "Complete";
-              currentStatus = `${data.tool_name} - ${agentSummary}`;
+              updateStatus(`${data.tool_name} - ${agentSummary}`);
               break;
             
             case "token":
@@ -146,10 +139,10 @@ export const useChatStream = () => {
               setError(errorMsg);
               setIsStreaming(false);
               // Show error in UI and stop thinking
-              currentStatus = `Error: ${errorMsg}`;
+              updateStatus(`Error: ${errorMsg}`);
               onUpdate({ 
                 reasoning: buildReasoning(), 
-                content: content || `Sorry, an error occurred: ${errorMsg}`, 
+                content: content || `ERROR: ${errorMsg}`, 
                 isThinking: false,
                 citations: [...citations],
                 stateChanges: [...stateChanges],
@@ -177,7 +170,7 @@ export const useChatStream = () => {
                   }
                 }));
                 // Update status to show user something happened
-                currentStatus = `Proposed changes for ${data.file_path}`;
+                updateStatus(`Proposed changes for ${data.file_path}`);
               }
               break;
 
@@ -203,7 +196,7 @@ export const useChatStream = () => {
           currentStatus = `Error: ${err}`;
           onUpdate({ 
             reasoning: buildReasoning(), 
-            content: `Sorry, an error occurred: ${err}`, 
+            content: `ERROR: ${err}`, 
             isThinking: false,
             citations: [...citations],
             stateChanges: [...stateChanges],
@@ -216,8 +209,8 @@ export const useChatStream = () => {
       setError(errorMsg);
       setIsStreaming(false);
       onUpdate({ 
-        reasoning: `Error: ${errorMsg}`, 
-        content: `Sorry, an error occurred: ${errorMsg}`, 
+        reasoning: `Error: Ran into an issue!`, 
+        content: `ERROR: ${errorMsg}`, 
         isThinking: false
       });
     }

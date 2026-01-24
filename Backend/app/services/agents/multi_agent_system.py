@@ -19,6 +19,7 @@ from app.utils.logget_setup import ai_logger
 from app.core.configs.app_config import settings, prompt_config
 from app.services.agents.manager.agent_manager import AgentManager
 from app.services.agents.manager.tool_manager import ToolRegistry
+from app.services.agents.mcp.prebuilt_mcps import _microsoft_learn_mcp_toolset
 
 
 PROMPT_GUIDELINES = prompt_config.get("PROMPT_GUIDELINES", "")
@@ -89,9 +90,11 @@ class MultiAgentSystem:
         try:
             # Step 1: Register all function tools FIRST
             ai_logger.debug("[Step 1/5] Registering function tools...")
-            ai_logger.debug("[Step 1/5] Registering function tools...")
             self._register_function_tools()
             
+            ai_logger.debug("[Step 1.5/5] Registering MCP tools...")
+            self._register_mcp_tools()
+
             # Step 2: Create specialized sub-agents
             ai_logger.debug("[Step 2/5] Creating answering agent...")
             self._create_answering_agent()
@@ -204,7 +207,22 @@ class MultiAgentSystem:
         
         ai_logger.debug(f"Function tools registration complete: {tools_registered} tools registered")
     
-    
+    def _register_mcp_tools(self):
+        """
+        Register MCP (Model Context Protocol) toolsets.
+        """
+        ai_logger.debug("MCP tools registration called (currently no MCP tools configured)")
+        
+        try:
+            ms_learn_mcp = _microsoft_learn_mcp_toolset()
+            self._tool_registry.register_mcp_tools("microsoft_learn_mcp", ms_learn_mcp)
+            ai_logger.debug("Registered Microsoft Learn MCP toolset")
+        except Exception as e:
+            ai_logger.error(f"Failed to register Microsoft Learn MCP: {str(e)}", exc_info=True)
+        
+        ai_logger.debug("MCP tools registration complete")
+
+
     def _create_answering_agent(self):
         """Create the Answering Agent for code explanation queries."""
         answering_prompt = prompt_config.get("QUERY_ANSWERING_PROMPT", "")
@@ -244,19 +262,12 @@ class MultiAgentSystem:
     
     def _create_web_search_agent(self):
         """Create the Search Agent for web searches."""
+        web_search_prompt = prompt_config.get("WEB_SEARCH_AGENT", "You are Web Search Agent")
         search_prompt = (
-            "You are a Web Search Agent. Your ONLY purpose is to search the web for information "
-            "when asked by the orchestrator.\n\n"
-            "Use the google_search tool to find relevant, up-to-date information about:\n"
-            "- Libraries, frameworks, and their latest versions\n"
-            "- Documentation and API references\n"
-            "- Best practices and design patterns\n"
-            "- Error messages and solutions\n\n"
-            "Return concise, relevant results. Cite sources when helpful.\n\n" + PROMPT_GUIDELINES
-        )
+            web_search_prompt + "\n\n" + PROMPT_GUIDELINES)
         
         self._web_search_agent = self._agent_manager.create(
-            name="search_agent",
+            name="web_search_agent",
             model=settings.FLASH_MODEL,
             instruction=search_prompt,
             description=(
@@ -372,3 +383,8 @@ class MultiAgentSystem:
         """Get the tool registry for inspection."""
         ai_logger.debug("Retrieving tool registry")
         return self._tool_registry
+
+    def get_web_search_agent(self) -> LlmAgent:
+        """Get the web search agent directly (for testing)."""
+        ai_logger.debug("Retrieving web search agent directly")
+        return self._web_search_agent

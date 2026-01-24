@@ -53,6 +53,27 @@ class ToolRegistry:
             raise
         return self
 
+    def register_mcp_tools(self, name: str, mcp_toolset):
+        """
+        Register an MCP toolset as a tool.
+        
+        Args:
+            name: Unique name for this MCP toolset in the registry
+            mcp_toolset: McpToolset instance or list of McpToolset instances
+        
+        Returns:
+            self for chaining
+        """
+        ai_logger.debug(f"Registering MCP toolset '{name}' (type={type(mcp_toolset).__name__})")
+        try:
+            self.register_builtin(name, mcp_toolset)
+            ai_logger.debug(f"MCP toolset '{name}' registered successfully")
+        except Exception as e:
+            ai_logger.error(f"Failed to register MCP toolset '{name}': {str(e)}", exc_info=True)
+            raise
+        return self
+
+
     def unregister(self, name: str):
         """Remove a tool from the registry."""
         if name in self._registry:

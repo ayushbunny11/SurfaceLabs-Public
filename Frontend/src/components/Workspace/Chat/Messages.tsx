@@ -73,9 +73,13 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
                 }`}
               >
                 {/* Reasoning Accordion (Inside bubble for Assistant) */}
-                {msg.role === "assistant" && (msg.reasoning || msg.isThinking) && (
-                  <ReasoningDisclosure reasoning={msg.reasoning || ""} isThinking={msg.isThinking} />
-                )}
+                {msg.role === "assistant" &&
+                  (msg.reasoning || msg.isThinking) && (
+                    <ReasoningDisclosure
+                      reasoning={msg.reasoning || ""}
+                      isThinking={msg.isThinking}
+                    />
+                  )}
 
                 {msg.role === "assistant" && msg.isThinking && !msg.content && (
                   <div className="flex items-center gap-1.5 py-1">
@@ -84,26 +88,34 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
                     <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse [animation-delay:400ms]" />
                   </div>
                 )}
-                
+
                 <div className="markdown-content">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
                       code({ node, className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || "");
-                        const isInline = !match && !String(children).includes("\n");
+                        const isInline =
+                          !match && !String(children).includes("\n");
                         // Exclude ref from props to avoid type errors with SyntaxHighlighter
                         const { ref, ...rest } = props as any;
                         return !isInline && match ? (
                           <div className="code-block-wrapper">
                             <div className="code-block-header">
-                                <span className="code-block-lang">{match[1]}</span>
+                              <span className="code-block-lang">
+                                {match[1]}
+                              </span>
                             </div>
                             <SyntaxHighlighter
                               style={vscDarkPlus as any}
                               language={match[1]}
                               PreTag="div"
-                              customStyle={{ margin: 0, padding: '1rem', background: 'transparent', fontSize: '13px' }}
+                              customStyle={{
+                                margin: 0,
+                                padding: "1rem",
+                                background: "transparent",
+                                fontSize: "13px",
+                              }}
                               wrapLongLines={true}
                               {...rest}
                             >
@@ -115,7 +127,11 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
                         );
                       },
                       a: ({ href, children }) => (
-                        <a href={href} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           {children}
                         </a>
                       ),
@@ -171,13 +187,18 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
 };
 
 // Reasoning Component - Shows current status prominently, history expandable
-const ReasoningDisclosure: FC<{ reasoning: string; isThinking?: boolean }> = ({ reasoning, isThinking }) => {
+const ReasoningDisclosure: FC<{ reasoning: string; isThinking?: boolean }> = ({
+  reasoning,
+  isThinking,
+}) => {
   const [showHistory, setShowHistory] = useState(false);
 
   // Parse reasoning: "current\n---\nhistory line 1\nhistory line 2"
   const parts = reasoning.split("\n---\n");
   const currentStatus = parts[0] || "";
-  const historyLines = parts[1] ? parts[1].split("\n").filter(line => line.trim()) : [];
+  const historyLines = parts[1]
+    ? parts[1].split("\n").filter((line) => line.trim())
+    : [];
 
   return (
     <div className="mb-3 w-full">
@@ -198,10 +219,17 @@ const ReasoningDisclosure: FC<{ reasoning: string; isThinking?: boolean }> = ({ 
             onClick={() => setShowHistory(!showHistory)}
             className="flex items-center gap-1 text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors ml-1"
           >
-            {showHistory ? <ExpandLess sx={{ fontSize: 12 }} /> : <ExpandMore sx={{ fontSize: 12 }} />}
-            <span>{showHistory ? "Hide" : "Show"} {historyLines.length} previous step{historyLines.length > 1 ? "s" : ""}</span>
+            {showHistory ? (
+              <ExpandLess sx={{ fontSize: 12 }} />
+            ) : (
+              <ExpandMore sx={{ fontSize: 12 }} />
+            )}
+            <span>
+              {showHistory ? "Hide" : "Show"} {historyLines.length} previous
+              step{historyLines.length > 1 ? "s" : ""}
+            </span>
           </button>
-          
+
           {showHistory && (
             <div className="mt-2 ml-3 pl-2 border-l border-neutral-800">
               {historyLines.map((line, idx) => (
@@ -216,5 +244,3 @@ const ReasoningDisclosure: FC<{ reasoning: string; isThinking?: boolean }> = ({ 
     </div>
   );
 };
-
-
