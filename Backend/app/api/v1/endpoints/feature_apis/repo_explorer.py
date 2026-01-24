@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Request
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from pydantic import BaseModel
@@ -7,6 +7,7 @@ from typing import Optional
 from app.utils.logget_setup import app_logger
 from app.core.configs.app_config import system_config, REPO_STORAGE, helper_config
 from app.schemas.feature_api_schemas import FileNode, ExplorerRequest, ContentRequest
+from app.core.rate_limiter import limiter, EXPLORER_LIMIT
 
 STATUS_SUCCESS = system_config.get("STATUS_SUCCESS", "success")
 STATUS_FAILURE = system_config.get("STATUS_FAILURE", "failure")
@@ -53,7 +54,8 @@ def build_tree(directory: Path, base_path: Path) -> list[FileNode]:
 
 
 @router.post("/explorer/tree")
-async def get_repo_tree(request_data: ExplorerRequest):
+@limiter.limit(EXPLORER_LIMIT)
+async def get_repo_tree(request: Request, request_data: ExplorerRequest):
     """
     Get the file tree structure for an analyzed repository.
     
@@ -106,7 +108,8 @@ async def get_repo_tree(request_data: ExplorerRequest):
 
 
 @router.post("/explorer/content")
-async def get_file_content(request_data: ContentRequest):
+@limiter.limit(EXPLORER_LIMIT)
+async def get_file_content(request: Request, request_data: ContentRequest):
     """
     Get the content of a specific file in the repository.
     """

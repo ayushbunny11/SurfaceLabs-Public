@@ -2,7 +2,7 @@ import { ChatInterface } from "./ChatInterface";
 import { CodeViewer } from "../Code/CodeViewer";
 import { Menu, PlayArrow, Commit } from "@mui/icons-material";
 import { IconButton, Button } from "@mui/material";
-import { useState, type FC, useContext, useCallback } from "react";
+import { useState, type FC, useContext, useCallback, useEffect } from "react";
 import { AppContext } from "../../../context/AppContext";
 import { useChatStream } from "../../../hooks/useChatStream";
 import type { Message } from "../../../types";
@@ -12,13 +12,39 @@ interface MainInterfaceProps {
 }
 
 export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
-  const { repoData, activeFile } = useContext(AppContext);
+  const { repoData, activeFile, setSessionUsage } = useContext(AppContext);
   const [messages, setMessages] = useState<Message[]>([]);
   const { sendMessage, isStreaming } = useChatStream();
 
+  // Calculate and update session usage whenever messages change
+  useEffect(() => {
+    const totalUsage = messages.reduce(
+      (acc, msg) => {
+        if (msg.usage) {
+          acc.prompt_tokens += msg.usage.prompt_tokens || 0;
+          acc.candidates_tokens += msg.usage.candidates_tokens || 0;
+          acc.cached_tokens += msg.usage.cached_tokens || 0;
+          acc.total_tokens += msg.usage.total_tokens || 0;
+        }
+        return acc;
+      },
+      { prompt_tokens: 0, candidates_tokens: 0, cached_tokens: 0, total_tokens: 0 }
+    );
+    setSessionUsage(totalUsage);
+  }, [messages, setSessionUsage]);
+
+  // CODE_PROPOSAL events are now handled in AppContext.tsx
+  // which manages the pendingProposals map for multi-file support
+
+
   const handleSend = useCallback(async (input: string) => {
-    // 0. Safeguard: Don't send if already loading or empty
+    // 0. Safeguard: Don't send if already loading, empty, or no repo data
     if (!input.trim() || isStreaming) return;
+    
+    if (!repoData?.cloneId) {
+      console.error("Missing repo cloneId, cannot send message");
+      return;
+    }
 
     // 1. Build query with file context if a file is open
     let queryWithContext = input;
@@ -58,7 +84,7 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
           )
         );
       },
-      repoData?.cloneId
+      repoData.cloneId
     );
   }, [repoData, activeFile, sendMessage, isStreaming]);
 
@@ -130,7 +156,7 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
       {/* Main Content (Split View Placeholders) */}
       <div className="flex-1 flex overflow-hidden">
         <CodeViewer />
-        <div className="w-[400px] border-l border-neutral-800 flex flex-col">
+        <div className="w-[460px] border-l border-neutral-800 flex flex-col">
           <ChatInterface messages={messages} onSend={handleSend} isLoading={isStreaming} />
         </div>
       </div>

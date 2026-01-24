@@ -7,6 +7,7 @@ from app.services.github.parser import extract_github_info_with_error
 
 from app.services.github.clone_stream import clone_with_progress
 from app.services.github.metadata import fetch_repo_metadata, fetch_branch_count
+from app.core.rate_limiter import limiter, CLONE_LIMIT
 
 router = APIRouter()
 
@@ -16,6 +17,7 @@ router = APIRouter()
 
 
 @router.post("/parse_github_url/stream")
+@limiter.limit(CLONE_LIMIT)
 async def parse_github_url_stream(request: Request, request_data: ParseGithubUrl):
     """
     SSE endpoint for parsing and cloning with progress streaming.

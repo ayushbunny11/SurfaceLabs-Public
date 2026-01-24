@@ -34,9 +34,12 @@ const FileTreeNode: FC<{ node: FileNode; depth?: number }> = ({
   depth = 0,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { setActiveFile } = useContext(AppContext);
+  const { setActiveFile, repoData, pendingProposals } = useContext(AppContext);
   const isFolder = node.type === "directory";
   const paddingLeft = `${depth * 12 + 12}px`;
+  
+  // Check if this file has a pending proposal
+  const hasPendingProposal = !isFolder && pendingProposals.has(node.path);
 
   const handleClick = async () => {
     if (isFolder) {
@@ -52,7 +55,7 @@ const FileTreeNode: FC<{ node: FileNode; depth?: number }> = ({
         });
 
         const res = await apiRequest<FileContentResponse>("POST", repo_content, {
-          folder_id: "3000ffa4303f4d1fb92a60b107462df2",
+          folder_id: repoData?.cloneId,
           file_path: node.path,
         });
 
@@ -105,7 +108,11 @@ const FileTreeNode: FC<{ node: FileNode; depth?: number }> = ({
           <InsertDriveFile sx={{ fontSize: 14, opacity: 0.7 }} />
         )}
 
-        <span className="text-[13px] truncate font-sans">{node.name}</span>
+        <span className="text-[13px] truncate font-sans flex-1">{node.name}</span>
+        
+        {hasPendingProposal && (
+            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse mt-[1px]" title="Pending changes" />
+        )}
       </div>
 
       {isFolder && isOpen && node.children && (
@@ -120,6 +127,7 @@ const FileTreeNode: FC<{ node: FileNode; depth?: number }> = ({
 };
 
 export const ProjectFiles: FC = () => {
+  const { repoData } = useContext(AppContext);
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -129,7 +137,7 @@ export const ProjectFiles: FC = () => {
       try {
         // Direct API call
         const response = await api.post<RepoTreeResponse>(repo_tree, {
-          folder_id: "3000ffa4303f4d1fb92a60b107462df2",
+          folder_id: repoData?.cloneId,
         });
 
         if (response.data.status === "success") {
@@ -143,7 +151,7 @@ export const ProjectFiles: FC = () => {
     };
 
     loadTree();
-  }, []);
+  }, [repoData?.cloneId]);
 
   return (
     <div>

@@ -108,3 +108,5 @@ KreeperAI is currently in active development.
 - [ ] **Active Features**: Sidebar management for ongoing tasks
 - [ ] **User API Key**: Secure, per-session API key management UI
 - [ ] **Token Management & Rate Limits**: Actual LLM token counts and usage tracking, per-user rate limiting
+
+### MCP for Playwright

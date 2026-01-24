@@ -13,9 +13,20 @@ export const useChatStream = () => {
   const sendMessage = useCallback(async (
     query: string,
     onUpdate: (update: Partial<Message>) => void,
-    folderId: string = "3000ffa4303f4d1fb92a60b107462df2",
+    folderId: string, // URL-based folder ID (required)
     userId: string = "918262"
   ) => {
+    if (!folderId) {
+      const errorMsg = "Repository context (folder ID) is missing.";
+      console.error(errorMsg);
+      setError(errorMsg);
+      onUpdate({ 
+        reasoning: "Error: Missing Context", 
+        content: errorMsg, 
+        isThinking: false
+      });
+      return;
+    }
     setIsStreaming(true);
     setError(null);
 
@@ -25,6 +36,13 @@ export const useChatStream = () => {
     let content = "";
     const citations: { title: string; uri: string; type: string }[] = [];
     const stateChanges: string[] = [];
+    const usage = {
+      prompt_tokens: 0,
+      candidates_tokens: 0,
+      thoughts_tokens: 0,
+      cached_tokens: 0,
+      total_tokens: 0
+    };
 
     // Helper to build reasoning string (current status + history)
     const buildReasoning = () => {
@@ -118,7 +136,8 @@ export const useChatStream = () => {
                 content, 
                 isThinking: false,
                 citations: [...citations],
-                stateChanges: [...stateChanges]
+                stateChanges: [...stateChanges],
+                usage: { ...usage }
               });
               return; // Exit early, no more updates needed
             
@@ -133,10 +152,35 @@ export const useChatStream = () => {
                 content: content || `Sorry, an error occurred: ${errorMsg}`, 
                 isThinking: false,
                 citations: [...citations],
-                stateChanges: [...stateChanges]
+                stateChanges: [...stateChanges],
+                usage: { ...usage }
               });
               return; // Exit early
             
+            case "token_usage":
+              if (data) {
+                // Keep the latest usage stats which represents the total for this turn
+                Object.assign(usage, data);
+              }
+              break;
+
+            case "code_proposal":
+              // Agent proposed a code change - trigger DiffViewer
+              if (data.file_path && data.proposed_content) {
+                console.log(`[useChatStream] Code proposal received for: ${data.file_path}`);
+                window.dispatchEvent(new CustomEvent('CODE_PROPOSAL', {
+                  detail: {
+                    filePath: data.file_path,
+                    originalContent: data.original_content,
+                    proposedContent: data.proposed_content,
+                    proposalId: data.proposal_id
+                  }
+                }));
+                // Update status to show user something happened
+                currentStatus = `Proposed changes for ${data.file_path}`;
+              }
+              break;
+
             default:
               break;
           }
@@ -148,7 +192,8 @@ export const useChatStream = () => {
               content, 
               isThinking: stillThinking,
               citations: [...citations],
-              stateChanges: [...stateChanges]
+              stateChanges: [...stateChanges],
+              usage: { ...usage }
           });
         },
         onError: (err) => {
@@ -161,7 +206,8 @@ export const useChatStream = () => {
             content: `Sorry, an error occurred: ${err}`, 
             isThinking: false,
             citations: [...citations],
-            stateChanges: [...stateChanges]
+            stateChanges: [...stateChanges],
+            usage: { ...usage }
           });
         }
       });

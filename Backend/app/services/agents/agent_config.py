@@ -8,7 +8,7 @@ from app.services.agents.manager.tool_manager import ToolRegistry
 GOOGLE_API_KEY = settings.GOOGLE_API_KEY
 GOOGLE_GENAI_USE_VERTEXAI = False
 
-APP_NAME = "ReqioIQ"
+APP_NAME = settings.APP_NAME
 
 agent_manager = AgentManager()
 memory_store = MemoryStore()

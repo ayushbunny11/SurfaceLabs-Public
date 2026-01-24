@@ -13,9 +13,9 @@ from google.genai import types
 
 from app.utils.logget_setup import app_logger
 from app.core.configs.app_config import settings
-from app.services.agents.agent_config import session_manager, APP_NAME
+from app.services.agents.agent_config import session_manager
 from app.services.agents.multi_agent_system import MultiAgentSystem
-from app.services.agents.agent_tools import search_index, retrieve_code_file, get_indexed_files
+from app.services.agents.agent_tools import search_index, retrieve_code_file, get_indexed_files, propose_code_change, load_index_for_folder
 from app.services.agents.event_capture import ExecutionTrace, EventCapture, EventType
 
 
@@ -41,20 +41,22 @@ class ChatService:
             self._multi_agent_system = MultiAgentSystem(
                 search_tool_func=search_index,
                 retrieve_file_func=retrieve_code_file,
-                list_files_func=get_indexed_files
+                list_files_func=get_indexed_files,
+                propose_code_change_func=propose_code_change,
+                compaction_interval=5,  # Compact every 5 invocations
+                overlap_size=2          # Keep 2 invocations for context overlap
             )
             
-            # Initialize and get the orchestrator
-            orchestrator = self._multi_agent_system.initialize()
+            # Initialize and get the App (includes orchestrator + compaction config)
+            app = self._multi_agent_system.initialize()
             
-            # Initialize the runner with the orchestrator
+            # Initialize the runner with the App
             self._runner = Runner(
-                agent=orchestrator,
-                app_name=APP_NAME,
+                app=app,
                 session_service=session_manager.get_service()
             )
             
-            app_logger.info("ChatService initialized with multi-agent system")
+            app_logger.info("ChatService initialized with multi-agent system and context compaction")
             
         except Exception as e:
             app_logger.error(f"Failed to initialize ChatService: {str(e)}")
@@ -89,8 +91,13 @@ class ChatService:
         """
         app_logger.info(f"Streaming query for user={user_id}, session={session_id}")
         
+        # Load the appropriate FAISS index for this folder
+        if folder_id:
+            load_index_for_folder(folder_id)
+        
         # Ensure session exists (get existing or create new)
-        await session_manager.get_or_create(APP_NAME, user_id, session_id)
+        # Using "ReqioIQ" to match the App name configured in MultiAgentSystem
+        await session_manager.get_or_create(settings.APP_NAME, user_id, session_id)
         
         # Create trace and event capture for consistent event handling
         trace = ExecutionTrace(

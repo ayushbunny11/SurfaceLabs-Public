@@ -13,3 +13,4 @@ export const chat_api = `${baseUrl}/v1/features/chat`
 export const chat_api_stream = `${baseUrl}/v1/features/chat/stream`
 export const repo_tree = `${baseUrl}/v1/features/explorer/tree`
 export const repo_content = `${baseUrl}/v1/features/explorer/content`
+export const proposal_action = `${baseUrl}/v1/features/proposals/action`

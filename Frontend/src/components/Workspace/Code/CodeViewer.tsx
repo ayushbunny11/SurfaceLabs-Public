@@ -1,5 +1,5 @@
-import { type FC, useContext, useState } from "react";
-import { Code, Preview, Visibility } from "@mui/icons-material";
+import { type FC, useContext, useState, useEffect } from "react";
+import { Code, Visibility, History } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -15,6 +15,7 @@ import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { AppContext } from "../../../context/AppContext";
 import { getLanguageFromFilename } from "../../../utils/languageUtils";
+import DiffViewer from "../../Common/DiffViewer";
 import "./CodeViewer.css";
 
 // Register languages to ensure they are available
@@ -28,9 +29,84 @@ SyntaxHighlighter.registerLanguage("css", css);
 SyntaxHighlighter.registerLanguage("html", html);
 SyntaxHighlighter.registerLanguage("bash", bash);
 
+import axios from "axios";
+import { proposal_action } from "../../../configs/api_config";
+import { Check, Close } from "@mui/icons-material";
+import { useSnackbar } from "../../../context/SnackbarContext";
+
 export const CodeViewer: FC = () => {
-  const { activeFile } = useContext(AppContext);
-  const [viewMode, setViewMode] = useState<"code" | "preview">("preview");
+  const { activeFile, setActiveFile, removeProposal, pendingProposals } =
+    useContext(AppContext);
+  const { showSnackbar } = useSnackbar();
+  const [viewMode, setViewMode] = useState<"code" | "preview" | "diff">("code");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Derived state: Get proposal from map if it exists for current file
+  const proposal = activeFile
+    ? pendingProposals.get(activeFile.path)
+    : undefined;
+
+  // Prefer proposal content if available (Derived from Map), fallback to activeFile (from immediate event)
+  const pendingContent = proposal?.pendingContent || activeFile?.pendingContent;
+  const proposalId = proposal?.proposalId || activeFile?.proposalId;
+
+  // Auto-switch to diff view if pending content appears
+  useEffect(() => {
+    if (pendingContent) {
+      setViewMode("diff");
+    }
+  }, [pendingContent]);
+
+  // Reset to code view when pendingContent is cleared
+  useEffect(() => {
+    if (activeFile && !pendingContent && viewMode === "diff") {
+      setViewMode("code");
+    }
+  }, [activeFile, pendingContent, viewMode]);
+
+  const handleProposalAction = async (action: "accept" | "reject") => {
+    if (!proposalId || !activeFile) return;
+
+    setIsProcessing(true);
+    try {
+      const response = await axios.post(proposal_action, {
+        proposal_id: proposalId,
+        action: action,
+      });
+
+      if (response.data.success) {
+        showSnackbar(response.data.message, "success");
+
+        // Remove from pendingProposals map
+        removeProposal(activeFile.path);
+
+        // Update local state
+        if (action === "accept" && pendingContent) {
+          // If accepted, update the main content with the new content
+          setActiveFile({
+            ...activeFile,
+            content: pendingContent,
+            pendingContent: null,
+            proposalId: undefined,
+          });
+        } else {
+          // If rejected, just clear the pending content
+          setActiveFile({
+            ...activeFile,
+            pendingContent: null,
+            proposalId: undefined,
+          });
+        }
+
+        setViewMode("code");
+      }
+    } catch (error: any) {
+      console.error("Proposal action failed:", error);
+      showSnackbar(error.response?.data?.detail || "Action failed", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   if (!activeFile) {
     return (
@@ -58,18 +134,41 @@ export const CodeViewer: FC = () => {
           {activeFile.path}
         </span>
         <div className="flex items-center gap-3">
-          {isMarkdown && (
-            <div className="flex bg-[#1e1e1e] rounded-md p-0.5 border border-neutral-800">
+          {/* Proposal Actions */}
+          {viewMode === "diff" && proposalId && (
+            <div className="flex items-center gap-2 mr-2 border-r border-neutral-800 pr-4">
               <button
-                onClick={() => setViewMode("code")}
-                className={`px-2 py-0.5 text-[10px] rounded hover:text-white cursor-pointer transition-colors flex items-center gap-1 ${
-                  viewMode === "code"
-                    ? "bg-[#2a2a2a] text-white"
-                    : "text-neutral-500"
-                }`}
+                onClick={() => handleProposalAction("accept")}
+                disabled={isProcessing}
+                className="px-2 py-0.5 text-[10px] rounded bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50 border border-emerald-900/50 cursor-pointer transition-colors flex items-center gap-1 disabled:opacity-50"
               >
-                <Code sx={{ fontSize: 12 }} /> Code
+                <Check sx={{ fontSize: 12 }} />
+                {isProcessing ? "Applying..." : "Accept"}
               </button>
+              <button
+                onClick={() => handleProposalAction("reject")}
+                disabled={isProcessing}
+                className="px-2 py-0.5 text-[10px] rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 border border-red-900/50 cursor-pointer transition-colors flex items-center gap-1 disabled:opacity-50"
+              >
+                <Close sx={{ fontSize: 12 }} />
+                {isProcessing ? "Rejecting..." : "Reject"}
+              </button>
+            </div>
+          )}
+
+          <div className="flex bg-[#1e1e1e] rounded-md p-0.5 border border-neutral-800">
+            <button
+              onClick={() => setViewMode("code")}
+              className={`px-2 py-0.5 text-[10px] rounded hover:text-white cursor-pointer transition-colors flex items-center gap-1 ${
+                viewMode === "code"
+                  ? "bg-[#2a2a2a] text-white"
+                  : "text-neutral-500"
+              }`}
+            >
+              <Code sx={{ fontSize: 12 }} /> Code
+            </button>
+
+            {isMarkdown && (
               <button
                 onClick={() => setViewMode("preview")}
                 className={`px-2 py-0.5 text-[10px] rounded hover:text-white cursor-pointer transition-colors flex items-center gap-1 ${
@@ -80,8 +179,21 @@ export const CodeViewer: FC = () => {
               >
                 <Visibility sx={{ fontSize: 12 }} /> Preview
               </button>
-            </div>
-          )}
+            )}
+
+            {pendingContent && (
+              <button
+                onClick={() => setViewMode("diff")}
+                className={`px-2 py-0.5 text-[10px] rounded hover:text-white cursor-pointer transition-colors flex items-center gap-1 ${
+                  viewMode === "diff"
+                    ? "bg-[#2a2a2a] text-white text-emerald-400"
+                    : "text-neutral-500"
+                }`}
+              >
+                <History sx={{ fontSize: 12 }} /> Diff
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -123,8 +235,18 @@ export const CodeViewer: FC = () => {
               {activeFile.content || ""}
             </ReactMarkdown>
           </div>
+        ) : viewMode === "diff" && pendingContent ? (
+          /* Diff View Mode */
+          <div className="flex-1 overflow-auto bg-[#1e1e1e]">
+            <DiffViewer
+              oldCode={activeFile.content || ""}
+              newCode={pendingContent}
+              splitView={false}
+              language={language}
+            />
+          </div>
         ) : (
-          /* Code View Mode */
+          /* Code View Mode (Default) */
           <div className="flex-1 overflow-auto text-[13px] force-wrap">
             <SyntaxHighlighter
               language={language}

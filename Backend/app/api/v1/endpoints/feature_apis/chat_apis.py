@@ -6,12 +6,17 @@ import time
 from app.schemas.feature_api_schemas import ChatRequest
 from app.utils.logget_setup import app_logger
 from app.services.chat.chat_service import ChatService
+from app.core.rate_limiter import limiter, CHAT_LIMIT
 
 router = APIRouter()
+
+# Global instance for lazy initialization
+
 chat_service = ChatService()
 
 
 @router.post("/chat/stream", status_code=status.HTTP_200_OK)
+@limiter.limit(CHAT_LIMIT)
 async def chat_with_agent_stream(request: Request, request_data: ChatRequest):
     """
     SSE streaming chat endpoint for real-time agent responses.

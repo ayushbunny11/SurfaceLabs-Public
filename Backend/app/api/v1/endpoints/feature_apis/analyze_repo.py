@@ -12,6 +12,7 @@ from app.core.configs.app_config import system_config, REPO_STORAGE, settings
 from app.services.github.code_analyzer import build_file_index, chunk_files, run_analysis_stream
 from app.services.agents.agent_config import agent_manager, memory_store, tool_registry, session_manager
 from app.services.ai_search.search_service import gemini_search_engine
+from app.core.rate_limiter import limiter, ANALYSIS_LIMIT, SEARCH_LIMIT
 
 STATUS_SUCCESS = system_config.get("STATUS_SUCCESS", "success")
 STATUS_FAILURE = system_config.get("STATUS_FAILURE", "failure")
@@ -21,6 +22,7 @@ app_logger.debug(settings.GOOGLE_API_KEY)
 router = APIRouter()
 
 @router.post("/analysis/stream")
+@limiter.limit(ANALYSIS_LIMIT)
 async def analyze_repo_stream(request: Request, request_data: AnalysisRequest):
     """SSE endpoint for analysis with real-time progress updates."""
     user_id = "918262"
@@ -84,6 +86,7 @@ async def analyze_repo_stream(request: Request, request_data: AnalysisRequest):
     )
 
 @router.post("/analysis")
+@limiter.limit(ANALYSIS_LIMIT)
 async def analyze_repo(request: Request, request_data: AnalysisRequest):
     """Non-streaming analysis endpoint (legacy)."""
     try:
@@ -97,7 +100,7 @@ async def analyze_repo(request: Request, request_data: AnalysisRequest):
         indexed_file_path = Path(REPO_STORAGE) / str(user_id) / "indexed_file" / f"file_index_{folder_ids}.json"
         indexed_file_path.parent.mkdir(parents=True, exist_ok=True)
         
-        analysis_agent = agent_manager.create(name="Analysis_Agent", model=settings.ANALYSIS_MODEL, instruction="", description="Analysis Agent")
+        analysis_agent = agent_manager.create(name="Analysis_Agent", model=settings.FLASH_MODEL, instruction="", description="Analysis Agent")
         
         indexed_file = build_file_index(file_path)
         if len(indexed_file) == 0:
@@ -134,6 +137,7 @@ async def analyze_repo(request: Request, request_data: AnalysisRequest):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=response)
     
 @router.post("/q", response_model=SearchResponse)
+@limiter.limit(SEARCH_LIMIT)
 async def search_indexed_docs(request: Request, request_data: SearchRequest):
     """
     Search through indexed document chunks using semantic similarity.

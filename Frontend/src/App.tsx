@@ -17,11 +17,15 @@ const AppContent = () => {
     );
 };
 
+import { SnackbarProvider } from './context/SnackbarContext';
+
 const App = () => {
     return (
-        <AppProvider>
-            <AppContent />
-        </AppProvider>
+        <SnackbarProvider>
+            <AppProvider>
+                <AppContent />
+            </AppProvider>
+        </SnackbarProvider>
     );
 };
 

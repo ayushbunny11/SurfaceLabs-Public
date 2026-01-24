@@ -336,7 +336,7 @@ async def run_analysis_stream(agent: Agent, folder_id, user_id, chunk_ids):
         await asyncio.gather(*tasks, return_exceptions=True)
         
         yield {"event": "progress", "stage": "indexing", "percent": 95, "message": "Saving search index..."}
-        gemini_search_engine.save()
+        gemini_search_engine.save(folder_id)
         
         if failed_chunks:
             yield {"event": "complete", "status": "partial", "percent": 100, "message": f"Analysis completed with {len(failed_chunks)} failed chunks", "failed_chunks": failed_chunks}

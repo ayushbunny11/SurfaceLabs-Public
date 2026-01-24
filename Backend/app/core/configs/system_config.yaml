@@ -2,3 +2,10 @@ LOG_LEVEL: "DEBUG"
 
 STATUS_FAILURE: "failure"
 STATUS_SUCCESS: "success"
+
+RATE_LIMITS:
+  CLONE_LIMIT: "5/day"
+  ANALYSIS_LIMIT: "5/day" # Set low for testing
+  CHAT_LIMIT: "50/day"
+  SEARCH_LIMIT: "100/day"
+  EXPLORER_LIMIT: "200/day"

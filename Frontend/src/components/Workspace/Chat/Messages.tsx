@@ -8,6 +8,11 @@ import {
   Add,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import "./MarkdownStyles.css";
 import type { Message } from "../../../types";
 
 interface MessagesProps {
@@ -80,7 +85,45 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
                   </div>
                 )}
                 
-                <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                <div className="markdown-content">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ node, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || "");
+                        const isInline = !match && !String(children).includes("\n");
+                        // Exclude ref from props to avoid type errors with SyntaxHighlighter
+                        const { ref, ...rest } = props as any;
+                        return !isInline && match ? (
+                          <div className="code-block-wrapper">
+                            <div className="code-block-header">
+                                <span className="code-block-lang">{match[1]}</span>
+                            </div>
+                            <SyntaxHighlighter
+                              style={vscDarkPlus as any}
+                              language={match[1]}
+                              PreTag="div"
+                              customStyle={{ margin: 0, padding: '1rem', background: 'transparent', fontSize: '13px' }}
+                              wrapLongLines={true}
+                              {...rest}
+                            >
+                              {String(children).replace(/\n$/, "")}
+                            </SyntaxHighlighter>
+                          </div>
+                        ) : (
+                          <code {...props}>{children}</code>
+                        );
+                      },
+                      a: ({ href, children }) => (
+                        <a href={href} target="_blank" rel="noopener noreferrer">
+                          {children}
+                        </a>
+                      ),
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
 
                 {/* Mock Proposed Changes (Only for AI) - Hardcoded for demo fidelity */}
                 {msg.role === "assistant" &&
@@ -110,8 +153,8 @@ export const Messages: FC<MessagesProps> = ({ messages }) => {
                     </div>
                   )}
               </div>
-              <span className="text-[10px] text-neutral-600 mt-1 px-1">
-                {msg.timestamp}
+              <span className="text-[10px] text-neutral-600 mt-1 px-1 flex items-center justify-between w-full">
+                <span>{msg.timestamp}</span>
               </span>
             </div>
 
@@ -173,3 +216,5 @@ const ReasoningDisclosure: FC<{ reasoning: string; isThinking?: boolean }> = ({ 
     </div>
   );
 };
+
+

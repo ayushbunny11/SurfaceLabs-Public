@@ -281,15 +281,20 @@ class GeminiSearchEngine:
         logger.warning(f"Document not found for deletion: {doc_id}")
         return False
 
-    def save(self) -> None:
+    def save(self, folder_id: Optional[str] = None) -> None:
         """
         Persist index and document store to disk.
         
         Args:
-            directory: Directory path to save files
+            folder_id: Optional folder ID for per-folder storage. 
+                       If provided, saves to faiss_{folder_id}/
+                       If None, saves to default location.
         """
-        directory = INDEX_STORAGE_DIR
-        dir_path = Path(directory)
+        if folder_id:
+            dir_path = INDEX_STORAGE_DIR / f"faiss_{folder_id}"
+        else:
+            dir_path = INDEX_STORAGE_DIR
+        
         dir_path.mkdir(parents=True, exist_ok=True)
         
         with self._lock:
@@ -302,20 +307,30 @@ class GeminiSearchEngine:
             with open(store_path, 'wb') as f:
                 pickle.dump(self.doc_store, f)
                 
-        logger.debug(f"Index saved to {directory}")
+        logger.debug(f"Index saved to {dir_path}")
 
-    def load(self) -> bool:
+    def load(self, folder_id: Optional[str] = None) -> bool:
         """
         Populates the current instance with data from disk.
-        Returns True if successful, False if files don't exist.
+        
+        Args:
+            folder_id: Optional folder ID for per-folder storage.
+                       If provided, loads from faiss_{folder_id}/
+                       If None, loads from default location.
+        
+        Returns:
+            True if successful, False if files don't exist.
         """
-        directory = INDEX_STORAGE_DIR
-        dir_path = Path(directory)
+        if folder_id:
+            dir_path = INDEX_STORAGE_DIR / f"faiss_{folder_id}"
+        else:
+            dir_path = INDEX_STORAGE_DIR
+            
         index_path = dir_path / "faiss.index"
         store_path = dir_path / "doc_store.pkl"
 
         if not index_path.exists() or not store_path.exists():
-            logger.warning(f"No index files found in {directory}")
+            logger.warning(f"No index files found in {dir_path}")
             return False
 
         with self._lock:
@@ -326,7 +341,7 @@ class GeminiSearchEngine:
             with open(store_path, 'rb') as f:
                 self.doc_store = pickle.load(f)
                 
-        logger.info(f"Index loaded. Total documents: {len(self)}")
+        logger.info(f"Index loaded from {dir_path}. Total documents: {len(self)}")
         return True
 
     def get_stats(self) -> Dict[str, Any]:

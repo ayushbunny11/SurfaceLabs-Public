@@ -21,11 +21,39 @@ api.interceptors.response.use(
   (error: AxiosError) => {
     if (error.response) {
       console.error("[API ERROR]", error.response.status, error.response.data);
-      if (error.response.status === 401 || error.response.status === 403) {
+      
+      // Handle Rate Limit (429)
+      if (error.response.status === 429) {
+        window.dispatchEvent(
+          new CustomEvent('SHOW_SNACKBAR', { 
+            detail: { message: "Slow down! You've hit the rate limit. Please wait a moment.", severity: 'warning' } 
+          })
+        );
+      }
+      // Handle Unauthorized (401) or Forbidden (403)
+      else if (error.response.status === 401 || error.response.status === 403) {
         localStorage.removeItem("access_token");
+        window.dispatchEvent(
+          new CustomEvent('SHOW_SNACKBAR', { 
+            detail: { message: "Session expired or unauthorized. Please log in again.", severity: 'error' } 
+          })
+        );
+      }
+      // Handle Server Errors (5xx)
+      else if (error.response.status >= 500) {
+        window.dispatchEvent(
+          new CustomEvent('SHOW_SNACKBAR', { 
+            detail: { message: "Server error occurred. Please try again later.", severity: 'error' } 
+          })
+        );
       }
     } else if (error.request) {
       console.error("[NETWORK ERROR]", error.message);
+      window.dispatchEvent(
+        new CustomEvent('SHOW_SNACKBAR', { 
+          detail: { message: "Network error. Please check your connection.", severity: 'error' } 
+        })
+      );
     } else {
       console.error("[CLIENT ERROR]", error.message);
     }

@@ -47,40 +47,42 @@ default_ignore:
   - Thumbs.db
 
 ignore_extensions:
-  - .h5
-  - .pkl
+  - .pyc
+  - .pyo
+  - .pyd
+  - .class
+  - .dll
+  - .exe
+  - .so
+  - .o
+  - .a
+  - .lib
+  - .whl
+  - .egg
   - .db
   - .sqlite
-  - .bin
-  - .exe
-  - .dll
-  - .so
-  - .dylib
-  - .zip
-  - .tar
-  - .gz
-  - .lock
   - .log
-  - .map
-
-  # images / media
+  - .lock
   - .png
   - .jpg
   - .jpeg
   - .gif
-  - .bmp
-  - .ico
   - .svg
+  - .ico
   - .mp4
   - .mp3
   - .wav
-  - .webm
-  - .mov
-  - .avi
-  - .mkv
-  - .flac
-
-  # fonts
+  - .zip
+  - .tar
+  - .gz
+  - .rar
+  - .7z
+  - .pdf
+  - .bin
+  - .dat
+  - .iso
+  - .dmg
+  - .msi
   - .ttf
   - .woff
   - .woff2

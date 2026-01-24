@@ -17,14 +17,13 @@ import {
   TextField,
   InputAdornment,
   Chip,
-  Alert,
-  Snackbar,
   LinearProgress,
   Box,
   Typography,
 } from "@mui/material";
 import { parse_github_url_stream } from "../configs/api_config";
 import { streamSSE } from "../utils/sse";
+import { useSnackbar } from "../context/SnackbarContext";
 
 // Helper to format relative time (e.g., "2 hours ago", "3 days ago")
 const formatRelativeTime = (dateString: string): string => {
@@ -51,10 +50,10 @@ const formatRelativeTime = (dateString: string): string => {
 const LandingView: React.FC = () => {
   const { setView, setRepoData, repoData, isSystemOnline } =
     useContext(AppContext);
+  const { showSnackbar } = useSnackbar();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [repoFound, setRepoFound] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Progress state for SSE
   const [progress, setProgress] = useState(0);
@@ -65,7 +64,6 @@ const LandingView: React.FC = () => {
     if (!url) return;
 
     setLoading(true);
-    setError(null);
     setProgress(0);
     setProgressMessage("Starting...");
 
@@ -111,8 +109,8 @@ const LandingView: React.FC = () => {
         updatedAt: metadataReceived.updated_at,
         isPrivate: metadataReceived.is_private ?? false,
         description: metadataReceived.description,
-        cloneId: cloneInfo?.unique_id,
-        clonePath: cloneInfo?.path,
+        cloneId: cloneInfo?.data?.unique_id || cloneInfo?.unique_id,
+        clonePath: cloneInfo?.data?.path || cloneInfo?.path,
       });
 
       setRepoFound(true);
@@ -137,7 +135,7 @@ const LandingView: React.FC = () => {
         }
       }
 
-      setError(errorMessage);
+      showSnackbar(errorMessage, "error");
       setRepoFound(false);
     } finally {
       setLoading(false);
@@ -147,19 +145,9 @@ const LandingView: React.FC = () => {
   };
 
   const handleProceed = () => {
-    setView(AppView.WORKSPACE);
+    console.log("[LandingView] handleProceed called. Setting view to ANALYSIS");
+    setView(AppView.ANALYSIS);
   };
-
-  // Assuming 'view' is also available from AppContext, or passed as a prop
-  // For this change, we'll assume it's available in the scope where LandingView is rendered
-  // and that WorkspaceView is imported.
-  // This part of the instruction seems to imply LandingView itself should conditionally render WorkspaceView.
-  // However, without the full context of how LandingView is used, this might be a structural change.
-  // Sticking to the exact instruction, if 'view' is a state managed higher up, this block would be there.
-  // If 'view' is from AppContext, we'd need to destructure it: const { setView, setRepoData, repoData, view } = useContext(AppContext);
-  // For now, I'll add it as if 'view' is accessible.
-  // Note: WorkspaceView import is missing in the provided content, assuming it exists.
-  // import WorkspaceView from "./WorkspaceView"; // This would be needed if this block is active.
 
   return (
     <div className="h-screen w-full flex flex-col items-center justify-center p-6 relative overflow-hidden bg-background">
@@ -447,20 +435,7 @@ const LandingView: React.FC = () => {
         </div>
       </motion.div>
 
-      <Snackbar
-        open={!!error}
-        autoHideDuration={3000}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        onClose={() => setError(null)}
-      >
-        <Alert
-          onClose={() => setError(null)}
-          severity="error"
-          sx={{ width: "100%" }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
+
     </div>
   );
 };

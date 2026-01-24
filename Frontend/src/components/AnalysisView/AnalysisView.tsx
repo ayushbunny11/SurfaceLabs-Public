@@ -38,14 +38,22 @@ const AnalysisView = () => {
   };
 
   useEffect(() => {
+    console.log("[AnalysisView] Effect Triggered", { 
+        hasStarted: hasStartedRef.current, 
+        repoDataPresent: !!repoData,
+        cloneId: repoData?.cloneId 
+    });
+
     if (hasStartedRef.current) return;
-    hasStartedRef.current = true;
 
     if (!repoData?.cloneId) {
-       addLog("Error: No repository context found.", "error");
-       setStatus("failure");
+       console.log("[AnalysisView] Waiting for cloneId...");
+       // Don't mark as started yet, wait for data
        return;
     }
+    
+    console.log("[AnalysisView] Starting analysis stream...", repoData.cloneId);
+    hasStartedRef.current = true;
 
     const startAnalysisStream = async () => {
       try {
