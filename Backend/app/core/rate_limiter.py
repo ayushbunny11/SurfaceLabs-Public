@@ -1,5 +1,5 @@
 """
-Rate Limiting Configuration for ReqioIQ API
+Rate Limiting Configuration for SurfaceLabs API
 
 Provides IP-based rate limiting using slowapi to protect against abuse.
 Limits are per-day per-IP and stored in-memory (reset on server restart).

@@ -9,7 +9,7 @@ from app.utils.logget_setup import app_logger
 # Default headers for all requests
 DEFAULT_HEADERS = {
     "Accept": "application/json",
-    "User-Agent": "ReqioIQ-App/1.0"
+    "User-Agent": "SurfaceLabs-App/1.0"
 }
 
 # Shared client instance (created on first use)

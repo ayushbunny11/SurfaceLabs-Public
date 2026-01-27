@@ -3,7 +3,7 @@ import sys
 import os
 
 if __name__ == "__main__":
-    print("🚀 Starting ReqioIQ Backend with Programmatic Reload Exclusions...")
+    print("🚀 Starting SurfaceLabs Backend with Programmatic Reload Exclusions...")
     
     # Use strict reload_dirs to ONLY watch code folders.
     # This prevents uvicorn from even looking at app/storage or app/logs,

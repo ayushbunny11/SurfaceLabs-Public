@@ -1,5 +1,5 @@
 """
-Multi-Agent System Setup for KreeperAI
+Multi-Agent System Setup for SurfaceLabs
 
 This module creates and configures the multi-agent hierarchy:
 - Orchestrator Agent: Routes queries and coordinates sub-agents
@@ -26,7 +26,7 @@ PROMPT_GUIDELINES = prompt_config.get("PROMPT_GUIDELINES", "")
 
 class MultiAgentSystem:
     """
-    Manages the multi-agent system for KreeperAI.
+    Manages the multi-agent system for SurfaceLabs.
     
     Architecture:
     - Orchestrator (root agent) receives all user queries

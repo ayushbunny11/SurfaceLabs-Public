@@ -96,7 +96,7 @@ class ChatService:
             load_index_for_folder(folder_id)
         
         # Ensure session exists (get existing or create new)
-        # Using "ReqioIQ" to match the App name configured in MultiAgentSystem
+        # Using "SurfaceLabs" to match the App name configured in MultiAgentSystem
         await session_manager.get_or_create(settings.APP_NAME, user_id, session_id)
         
         # Create trace and event capture for consistent event handling

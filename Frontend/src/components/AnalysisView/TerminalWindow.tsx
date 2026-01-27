@@ -136,7 +136,7 @@ export const TerminalWindow: FC<TerminalWindowProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs font-medium text-neutral-500">
-            <span>reqio-iq-cli</span>
+            <span>SurfaceLabs-cli</span>
             <span className="text-neutral-700">—</span>
             <span>v2.4.0</span>
           </div>

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseSettings):
-    APP_NAME: str = "KreeperAI"
+    APP_NAME: str = "SurfaceLabs"
     APP_ENV: str = "development"
     API_V1_PREFIX: str = "/api"
     ALLOWED_ORIGINS: list[str] = ["*"]

@@ -1,8 +1,8 @@
-# KreeperAI
+# SurfaceLabs
 
-KreeperAI is an AI-powered assistant that helps developers add **specific features** to existing codebases — without rebuilding the whole application.
+SurfaceLabs is an AI-powered assistant that helps developers add **specific features** to existing codebases — without rebuilding the whole application.
 
-Instead of asking an AI to “generate an entire app”, KreeperAI focuses on **incremental development**: it understands your project, then guides you with code changes that fit naturally into it.
+Instead of asking an AI to "generate an entire app", SurfaceLabs focuses on **incremental development**: it understands your project, then guides you with code changes that fit naturally into it.
 
 ---
 
@@ -10,32 +10,32 @@ Instead of asking an AI to “generate an entire app”, KreeperAI focuses on **
 
 Most AI tools struggle with real-world codebases:
 
-- They don’t fully understand project structure
+- They don't fully understand project structure
 - They overwrite files instead of modifying them safely
-- They generate code that doesn’t match the project style
+- They generate code that doesn't match the project style
 - Developers waste time integrating and fixing AI output
 
-KreeperAI is built to work **inside existing projects**, not replace them.
+SurfaceLabs is built to work **inside existing projects**, not replace them.
 
 ---
 
-## ✨ What KreeperAI does
+## ✨ What SurfaceLabs does
 
 - 🔎 Analyzes your repository (GitHub or local project)
 - 🧠 Understands architecture, dependencies, and patterns
 - 📝 Accepts natural-language feature requests (e.g.,  
-  _“Add JWT authentication and protect the dashboard API”_)
+  _"Add JWT authentication and protect the dashboard API"_)
 - 🛠 Generates **targeted diffs and code suggestions**
 - 📌 Explains where changes go — and why
 - ⚠ Avoids overwriting working code
 
-KreeperAI acts like a smart collaborator sitting in your IDE.
+SurfaceLabs acts like a smart collaborator sitting in your IDE.
 
 ---
 
-## 🎯 Why it’s useful
+## 🎯 Why it's useful
 
-KreeperAI helps you:
+SurfaceLabs helps you:
 
 - build faster without rewriting everything
 - safely introduce new features
@@ -43,7 +43,7 @@ KreeperAI helps you:
 - learn best practices from structured explanations
 - integrate AI output confidently
 
-It’s especially powerful for:
+It's especially powerful for:
 
 - growing startups
 - hackathon teams
@@ -55,11 +55,11 @@ It’s especially powerful for:
 
 ## 🌟 The vision
 
-KreeperAI bridges the gap between:
+SurfaceLabs bridges the gap between:
 
-> **“AI generated some code”**  
+> **"AI generated some code"**  
 > and  
-> **“this integrates cleanly into my real project.”**
+> **"this integrates cleanly into my real project."**
 
 By focusing on _feature-level intelligence_, it supports modern, iterative development instead of one-shot code generation.
 
@@ -67,7 +67,7 @@ By focusing on _feature-level intelligence_, it supports modern, iterative devel
 
 ## 📌 Status: Technical Preview
 
-KreeperAI is currently in active development.
+SurfaceLabs is currently in active development.
 
 ### ✅ Implemented Features
 
