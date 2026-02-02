@@ -10,6 +10,23 @@ Instead of asking an AI to "generate an entire app", SurfaceLabs focuses on **in
 
 ---
 
+## ✨ Key Features
+
+- **🧠 Deep Repo Understanding**: Analyzes your entire codebase to understand patterns, dependencies, and architecture.
+- **🤖 Multi-Agent Orchestration**: Specialized AI agents work together to plan, implement, and verify features.
+- **🛠️ Targeted Code Modification**: Generates surgical diffs instead of overwriting files, ensuring safety and consistency.
+- **💬 Context-Aware Chat**: Real-time interaction with the AI that knows exactly where you are in the project.
+- **⚡ Enterprise Ready**: Built for scalability with a robust backend and a modern, responsive frontend.
+
+## 💻 Tech Stack
+
+- **Frontend**: React, TypeScript, Tailwind CSS, Vite
+- **Backend**: Python, FastAPI, Uvicorn
+- **AI/LLM**: Google Gemini
+- **Infrastructure**: SSE (Server-Sent Events) for real-time streaming, Multi-agent orchestration logic
+
+---
+
 ## 🚀 What problem does it solve?
 
 Most AI tools struggle with real-world codebases:
