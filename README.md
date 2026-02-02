@@ -4,6 +4,10 @@ SurfaceLabs is an AI-powered assistant that helps developers add **specific feat
 
 Instead of asking an AI to "generate an entire app", SurfaceLabs focuses on **incremental development**: it understands your project, then guides you with code changes that fit naturally into it.
 
+<p align="center">
+  <img src="app_assets/LandingScreen.PNG" width="800" alt="SurfaceLabs Landing Screen">
+</p>
+
 ---
 
 ## 🚀 What problem does it solve?
@@ -23,13 +27,14 @@ SurfaceLabs is built to work **inside existing projects**, not replace them.
 
 - 🔎 Analyzes your repository (GitHub or local project)
 - 🧠 Understands architecture, dependencies, and patterns
-- 📝 Accepts natural-language feature requests (e.g.,  
-  _"Add JWT authentication and protect the dashboard API"_)
+- 📝 Accepts natural-language feature requests (e.g., _"Add JWT authentication and protect the dashboard API"_)
 - 🛠 Generates **targeted diffs and code suggestions**
 - 📌 Explains where changes go — and why
 - ⚠ Avoids overwriting working code
 
-SurfaceLabs acts like a smart collaborator sitting in your IDE.
+<p align="center">
+  <img src="app_assets/AnalysisScreen.PNG" width="800" alt="SurfaceLabs Analysis">
+</p>
 
 ---
 
@@ -43,14 +48,6 @@ SurfaceLabs helps you:
 - learn best practices from structured explanations
 - integrate AI output confidently
 
-It's especially powerful for:
-
-- growing startups
-- hackathon teams
-- junior developers
-- solo builders maintaining large projects
-- product teams shipping frequent updates
-
 ---
 
 ## 🌟 The vision
@@ -63,50 +60,49 @@ SurfaceLabs bridges the gap between:
 
 By focusing on _feature-level intelligence_, it supports modern, iterative development instead of one-shot code generation.
 
----
-
-## 📌 Status: Technical Preview
-
-SurfaceLabs is currently in active development.
-
-### ✅ Implemented Features
-
-- **Multi-Agent Orchestration**: Specialized agents for Feature Generation, Code Explanation, and Project Management.
-- **Context-Aware Chat**: Agents have full awareness of the repository structure and file contents.
-- **Real-time Streaming**: SSE-based chat interface with "Thinking" process visibility.
-- **Session Management**: Persistent chat sessions with history tracking.
-- **Repository Analysis**: Smart file tree exploration and indexing.
-
-### 🎉 Phase 1 Successfully Completed — January 18, 2026
+<p align="center">
+  <img src="app_assets/Workspace.PNG" width="800" alt="SurfaceLabs Workspace">
+</p>
 
 ---
 
-## 🗺️ Roadmap: Phase 2 - January 19, 2026
+## 🛠️ Getting Started
 
-### Core Enhancements
+### Prerequisites
 
-### 1. Chat & Visuals
+Before starting, ensure you have an API key from [Google AI Studio](https://aistudio.google.com/).
 
-- [ ] Enhanced chat styling (Typography, Avatars)
-- [ ] Rich message formatting (Markdown, Code Blocks)
-- [ ] Contextual user message styling
+### Backend Setup
 
-### 2. File Operations
+1.  Navigate to the `Backend` directory:
+    ```bash
+    cd Backend
+    ```
+2.  Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  Configure environment variables. Create or edit the `.env` file and add your API key:
+    ```bash
+    export GOOGLE_API_KEY=YOUR_API_KEY_HERE
+    ```
+4.  Launch the backend server:
+    ```bash
+    python run.py
+    ```
 
-- [ ] Backend support for creating and editing files
-- [ ] Frontend UI for accepting/rejecting proposed changes
-- [ ] Direct file manipulation by agents
+### Frontend Setup
 
-### 3. Diff Viewer
+1.  Navigate to the `Frontend` directory:
+    ```bash
+    cd Frontend
+    ```
+2.  Install dependencies and start the development server with legacy peer support:
+    ```bash
+    npm install
+    npm run dev -- --legacy-peer-deps
+    ```
 
-- [ ] GitHub-style diff viewer for proposed code changes
-- [ ] Line-by-line comparison (Old vs New)
+---
 
-### 4. Advanced Tooling
-
-- [ ] **Testing Agent**: Dedicated agent for running and verifying tests
-- [ ] **Active Features**: Sidebar management for ongoing tasks
-- [ ] **User API Key**: Secure, per-session API key management UI
-- [ ] **Token Management & Rate Limits**: Actual LLM token counts and usage tracking, per-user rate limiting
-
-### MCP for Playwright
+_SurfaceLabs: Incremental development powered by AI._
