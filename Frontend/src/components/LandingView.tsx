@@ -213,10 +213,10 @@ const LandingView: React.FC = () => {
             <Build className="text-primary" sx={{ fontSize: 28 }} />
           </motion.div>
           <h1 className="text-4xl font-semibold tracking-tight text-white mb-3">
-            Automated Feature Integration
+            SurfaceLabs
           </h1>
           <p className="text-neutral-400 text-lg">
-            Transform requirements into production-ready code.
+            Enterprise Ready AI-Powered Feature Integration Platform
           </p>
         </div>
 

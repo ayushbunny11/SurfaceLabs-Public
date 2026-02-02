@@ -149,7 +149,7 @@ export const TerminalWindow: FC<TerminalWindowProps> = ({
         >
           <div className="flex flex-col gap-1.5">
             <div className="text-neutral-500 mb-4 text-xs select-none">
-              Last login: {new Date().toDateString()} on ttys001
+              Last login: {new Date().toDateString()} on terminal-01
             </div>
             
             {logs.map((log, i) => (
