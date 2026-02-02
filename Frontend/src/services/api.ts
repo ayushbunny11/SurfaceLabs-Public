@@ -80,4 +80,38 @@ export async function apiRequest<T = unknown>(
 
 
 
+
+export async function downloadFile(
+  url: string,
+  payload?: unknown,
+  fileName: string = "download.zip"
+): Promise<void> {
+  const response = await api({
+    method: "POST",
+    url,
+    data: payload ?? undefined,
+    responseType: "blob",
+  });
+
+  const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  
+  // Try to extract filename from content-disposition header
+  const contentDisposition = response.headers["content-disposition"];
+  let finalFileName = fileName;
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (filenameMatch && filenameMatch[1]) {
+        finalFileName = filenameMatch[1];
+    }
+  }
+  
+  link.setAttribute("download", finalFileName);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
 export default api;

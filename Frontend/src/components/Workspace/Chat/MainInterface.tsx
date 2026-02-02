@@ -1,11 +1,13 @@
 import { ChatInterface } from "./ChatInterface";
 import { CodeViewer } from "../Code/CodeViewer";
-import { Menu, PlayArrow, Commit } from "@mui/icons-material";
+import { Menu, Download } from "@mui/icons-material";
 import { IconButton, Button } from "@mui/material";
 import { useState, type FC, useContext, useCallback, useEffect } from "react";
 import { AppContext } from "../../../context/AppContext";
 import { useChatStream } from "../../../hooks/useChatStream";
 import type { Message } from "../../../types";
+import { downloadFile } from "../../../services/api";
+import { CircularProgress } from "@mui/material";
 
 interface MainInterfaceProps {
     onToggleSidebar: () => void;
@@ -14,6 +16,7 @@ interface MainInterfaceProps {
 export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
   const { repoData, activeFile, setSessionUsage } = useContext(AppContext);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { sendMessage, isStreaming } = useChatStream();
 
   // Calculate and update session usage whenever messages change
@@ -83,6 +86,28 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
     );
   }, [repoData, activeFile, sendMessage, isStreaming]);
 
+  const handleDownload = async () => {
+    if (!repoData?.cloneId) {
+        console.warn("No repo cloned to download");
+        return;
+    }
+    
+    try {
+        setIsDownloading(true);
+        await downloadFile("/features/download/repo", { folder_id: repoData.cloneId });
+        window.dispatchEvent(new CustomEvent('SHOW_SNACKBAR', { 
+            detail: { message: "Download started", severity: 'info' } 
+        }));
+    } catch (error) {
+        console.error("Download failed", error);
+        window.dispatchEvent(new CustomEvent('SHOW_SNACKBAR', { 
+            detail: { message: "Failed to download repository", severity: 'error' } 
+        }));
+    } finally {
+        setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0c0c0c]">
       {/* Header / Toolbar */}
@@ -108,7 +133,8 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
           <Button
             variant="outlined"
             size="small"
-            startIcon={<PlayArrow sx={{ fontSize: 16 }} />}
+            onClick={handleDownload}
+            startIcon={<Download sx={{ fontSize: 16 }} />}
             sx={{
                borderColor: "#404040",
                color: "#a3a3a3",
@@ -124,9 +150,10 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
                }
             }}
           >
-            Run Tests
+            {isDownloading ? <CircularProgress size={16} sx={{ color: "inherit", mr: 1 }} /> : null}
+            {isDownloading ? "Downloading..." : "Download Zip"}
           </Button>
-          <Button
+          {/* <Button
             variant="contained"
             size="small"
             startIcon={<Commit sx={{ fontSize: 16 }} />}
@@ -144,7 +171,7 @@ export const MainInterface: FC<MainInterfaceProps> = ({ onToggleSidebar }) => {
             }}
           >
             Create PR
-          </Button>
+          </Button> */}
         </div>
       </header>
 

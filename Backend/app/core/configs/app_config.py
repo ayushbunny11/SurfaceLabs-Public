@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = ["*"]
     
     GOOGLE_API_KEY: str = ""
-    ANALYSIS_MODEL: str = ""
-    FLASH_MODEL: str = ""
+    ANALYSIS_MODEL: str = "gemini-3-pro-preview"
+    FLASH_MODEL: str = "gemini-2.0-flash"
 
     class Config:
         env_file = ".env"

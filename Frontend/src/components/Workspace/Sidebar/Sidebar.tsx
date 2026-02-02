@@ -42,7 +42,7 @@ export const Sidebar: FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-neutral-800">
-        <ActiveFeatures />
+        {/* <ActiveFeatures /> */}
         <ProjectFiles />
       </div>
 
